@@ -1,10 +1,10 @@
 {
   "name": "comelit-hub-client",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "author": "Pierpaolo Follia",
   "repository": {
     "type": "git",
-    "url": "https://github.com/madchicken/comelit-hub-client"
+    "url": "https://github.com/madchicken/comelit-client"
   },
   "description": "Comelit HUB CLI interface",
   "license": "Apache-2.0",
@@ -26,15 +26,19 @@
     "build": "yarn run build-ts && yarn run lint",
     "build-ts": "tsc",
     "watch-ts": "tsc -w",
-    "lint": "tsc --noEmit && eslint \"src/*.{js,ts}\" --quiet --fix"
+    "lint": "tsc --noEmit && eslint \"src/*.{js,ts}\" --quiet --fix",
+    "prettier": "prettier --single-quote --trailing-comma es5 --write \"{src/,__{tests,mocks}__}/**/*.ts\"",
+    "test": "jest"
   },
   "dependencies": {
     "@sentry/node": "5.12.2",
     "async-mqtt": "^2.4.2",
+    "axios": "^0.19.2",
     "chalk": "^3.0.0",
     "lodash": "^4.17.15",
     "mqtt": "^3.0.0",
     "mqtt-packet": "^6.3.0",
+    "querystring": "^0.2.0",
     "typescript": "^3.7.4",
     "yargs": "^15.1.0"
   },
@@ -48,8 +52,15 @@
     "@types/mqtt": "^2.5.0",
     "@types/node": "^11.15.3",
     "@types/yargs": "^15.0.0",
+    "@types/jest": "^25.1.4",
+    "@types/nock": "^11.1.0",
     "@typescript-eslint/eslint-plugin": "^2.14.0",
     "@typescript-eslint/parser": "^2.14.0",
-    "eslint": "^6.4.0"
+    "@types/axios": "^0.14.0",
+    "eslint": "^6.4.0",
+    "prettier": "^1.19.1",
+    "jest": "^25.1.0",
+    "ts-jest": "^25.2.1",
+    "nock": "^12.0.2"
   }
 }
