@@ -1,4 +1,4 @@
-import {ClimaMode, OBJECT_TYPE, ThermoSeason} from './comelit-client';
+import {ClimaMode, ThermoSeason} from './comelit-client';
 
 export interface DomoticData {
   id: string;
@@ -132,6 +132,32 @@ export interface SupplierDeviceData extends DeviceData {
 }
 
 export type DeviceIndex<T = DeviceData> = Map<string, T>;
+
+export enum OBJECT_TYPE {
+  BLIND = 2,
+  LIGHT = 3,
+  THERMOSTAT = 9,
+  OUTLET = 10,
+  POWER_SUPPLIER = 11,
+  ZONE = 1001
+}
+
+export enum OBJECT_SUBTYPE {
+  GENERIC = 0,
+  DIGITAL_LIGHT = 1,
+  RGB_LIGHT = 2,
+  TEMPORIZED_LIGHT = 3,
+  DIMMER_LIGHT = 4,
+  ELECTRIC_BLIND = 7,
+  GENERIC_ZONE = 13,
+  CONSUMPTION = 15,
+  THERMOSTAT_DEHUMIDIFIER = 16
+}
+
+export const ON = 1;
+export const OFF = 0;
+export const STATUS_ON = "1";
+export const STATUS_OFF = "0";
 
 export class HomeIndex {
   public readonly lightsIndex: DeviceIndex<LightDeviceData> = new Map<string,

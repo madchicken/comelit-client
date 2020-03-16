@@ -61,32 +61,6 @@ export interface MqttIncomingMessage {
   message?: string;
 }
 
-export enum OBJECT_TYPE {
-  BLIND = 2,
-  LIGHT = 3,
-  THERMOSTAT = 9,
-  OUTLET = 10,
-  POWER_SUPPLIER = 11,
-  ZONE = 1001
-}
-
-export enum OBJECT_SUBTYPE {
-  GENERIC = 0,
-  DIGITAL_LIGHT = 1,
-  RGB_LIGHT = 2,
-  TEMPORIZED_LIGHT = 3,
-  DIMMER_LIGHT = 4,
-  ELECTRIC_BLIND = 7,
-  GENERIC_ZONE = 13,
-  CONSUMPTION = 15,
-  THERMOSTAT_DEHUMIDIFIER = 16
-}
-
-export const ON = 1;
-export const OFF = 0;
-export const STATUS_ON = "1";
-export const STATUS_OFF = "0";
-
 export enum ThermoSeason {
   SUMMER,
   WINTER
@@ -464,7 +438,10 @@ export class ComelitClient extends PromiseBasedQueue<
     return ComelitClient.evalResponse(response).then(value => value);
   }
 
-  async device(objId: string, detailLevel?: number): Promise<DeviceData> {
+  async device(
+    objId: string = ROOT_ID,
+    detailLevel?: number
+  ): Promise<DeviceData> {
     const packet: MqttMessage = {
       req_type: REQUEST_TYPE.STATUS,
       seq_id: this.props.index++,
@@ -493,6 +470,11 @@ export class ComelitClient extends PromiseBasedQueue<
     return ComelitClient.evalResponse(response).then(
       () => response.out_data[0] as DeviceData
     );
+  }
+
+  async fecthHomeIndex(): Promise<HomeIndex> {
+    const root = await this.device(ROOT_ID);
+    return this.mapHome(root);
   }
 
   async toggleDeviceStatus(id: string, status: number): Promise<boolean> {
