@@ -1,6 +1,6 @@
 {
-  "name": "comelit-hub-client",
-  "version": "0.1.0",
+  "name": "comelit-client",
+  "version": "1.0.0",
   "author": "Pierpaolo Follia",
   "repository": {
     "type": "git",
@@ -44,6 +44,7 @@
   },
   "bin": {
     "comelit": "./bin/comelit-cli.js",
+    "comelit-sb": "./bin/comelit-sb-cli.js",
     "vedo": "./bin/vedo-cli.js"
   },
   "devDependencies": {
