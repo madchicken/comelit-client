@@ -1,6 +1,15 @@
 import axios from "axios";
-import {DeviceData, DeviceIndex, HomeIndex, OBJECT_SUBTYPE, OBJECT_TYPE, ON, STATUS_OFF, STATUS_ON} from "./types";
-import {ROOT_ID} from "./comelit-client";
+import {
+  DeviceData,
+  DeviceIndex,
+  HomeIndex,
+  OBJECT_SUBTYPE,
+  OBJECT_TYPE,
+  ON,
+  STATUS_OFF,
+  STATUS_ON
+} from "./types";
+import { ROOT_ID } from "./comelit-client";
 
 export interface LoginInfo {
   domus: string;
@@ -13,7 +22,7 @@ export interface LoginInfo {
   icon_status: string;
 }
 
-interface LightsInfo {
+interface DeviceInfo {
   num: number;
   desc: string[];
   env: number[];
@@ -57,9 +66,7 @@ export class BridgeClient {
   public init() {}
 
   async login(): Promise<boolean> {
-    const info = await axios.get<LoginInfo>(
-      `${this.address}/login.json`
-    );
+    const info = await axios.get<LoginInfo>(`${this.address}/login.json`);
     return info.status === 200 && info.data.logged === ANONYMOUS;
   }
 
@@ -69,70 +76,86 @@ export class BridgeClient {
 
   async fecthHomeIndex(): Promise<HomeIndex> {
     const rooms: DeviceIndex = new Map<string, DeviceData>();
-    const info = await this.fetchDeviceDesc('light');
-    if (info.status === 200) {
-      const data: LightsInfo = info.data;
-      data.env_desc.forEach((desc, index) => {
-        if (desc) {
-          rooms.set(getZoneKey(index), {
-            id: getZoneKey(index),
-            objectId: getZoneKey(index),
-            status: STATUS_OFF,
-            type: OBJECT_TYPE.ZONE,
-            sub_type: OBJECT_SUBTYPE.GENERIC_ZONE,
-            descrizione: desc,
-            elements: []
-          });
-        }
-      }, rooms);
-
-      data.desc.forEach((desc, index) => {
-        const roomId = getZoneKey(data.env[index]);
-        const room: DeviceData = rooms.get(roomId);
-        room.elements.push({
-          id: getLightKey(index),
-          data: {
-            id: getLightKey(index),
-            objectId: `{index}`,
-            status: data.status[index] === 1 ? STATUS_ON : STATUS_OFF,
-            type: OBJECT_TYPE.LIGHT,
-            sub_type:
-              data.type[index] === 1
-                ? OBJECT_SUBTYPE.TEMPORIZED_LIGHT
-                : OBJECT_SUBTYPE.DIGITAL_LIGHT,
-            descrizione: desc,
-            isProtected: `${data.protected[index]}`,
-            placeId: `${roomId}`
-          }
+    let data: DeviceInfo = await this.fetchDeviceDesc("light");
+    data.env_desc.forEach((desc, index) => {
+      if (desc) {
+        rooms.set(getZoneKey(index), {
+          id: getZoneKey(index),
+          objectId: getZoneKey(index),
+          status: STATUS_OFF,
+          type: OBJECT_TYPE.ZONE,
+          sub_type: OBJECT_SUBTYPE.GENERIC_ZONE,
+          descrizione: desc,
+          elements: []
         });
-      });
+      }
+    }, rooms);
 
-      return new HomeIndex({
-        id: ROOT_ID,
-        objectId: ROOT_ID,
-        status: STATUS_OFF,
-        type: OBJECT_TYPE.ZONE,
-        sub_type: OBJECT_SUBTYPE.GENERIC_ZONE,
-        descrizione: "root",
-        elements: [...rooms.values()].map(dd => ({ id: dd.id, data: dd }))
+    data.desc.forEach((desc, index) => {
+      const roomId = getZoneKey(data.env[index]);
+      const room: DeviceData = rooms.get(roomId);
+      room.elements.push({
+        id: getLightKey(index),
+        data: {
+          id: getLightKey(index),
+          objectId: `{index}`,
+          status: data.status[index] === 1 ? STATUS_ON : STATUS_OFF,
+          type: OBJECT_TYPE.LIGHT,
+          sub_type:
+            data.type[index] === 1
+              ? OBJECT_SUBTYPE.TEMPORIZED_LIGHT
+              : OBJECT_SUBTYPE.DIGITAL_LIGHT,
+          descrizione: desc,
+          isProtected: `${data.protected[index]}`,
+          placeId: `${roomId}`
+        }
       });
-    }
-    return null;
+    });
+    data = await this.fetchDeviceDesc("shutter");
+    data.desc.forEach((desc, index) => {
+      const roomId = getZoneKey(data.env[index]);
+      const room: DeviceData = rooms.get(roomId);
+      room.elements.push({
+        id: getBlindKey(index),
+        data: {
+          id: getBlindKey(index),
+          objectId: `{index}`,
+          status: data.status[index] === 1 ? STATUS_ON : STATUS_OFF,
+          type: OBJECT_TYPE.BLIND,
+          sub_type: OBJECT_SUBTYPE.ELECTRIC_BLIND,
+          descrizione: desc,
+          isProtected: `${data.protected[index]}`,
+          placeId: `${roomId}`
+        }
+      });
+    });
+
+    return new HomeIndex({
+      id: ROOT_ID,
+      objectId: ROOT_ID,
+      status: STATUS_OFF,
+      type: OBJECT_TYPE.ZONE,
+      sub_type: OBJECT_SUBTYPE.GENERIC_ZONE,
+      descrizione: "root",
+      elements: [...rooms.values()].map(dd => ({ id: dd.id, data: dd }))
+    });
   }
 
-  private async fetchDeviceDesc(type: string) {
-    return await axios.get<LightsInfo>(
-        `${this.address}/icon_desc.json`,
-        {
-          params: {
-            type
-          }
-        }
-    );
+  private async fetchDeviceDesc(type: string): Promise<DeviceInfo> {
+    const resp = await axios.get<DeviceInfo>(`${this.address}/icon_desc.json`, {
+      params: {
+        type
+      }
+    });
+    if (resp.status === 200) {
+      return resp.data;
+    }
+
+    throw new Error(`Unable to fetch description data for ${type}`);
   }
 
   async updateHomeStatus(homeIndex: HomeIndex) {
-    let info = await this.fetchDevicesStatus('light');
+    let info = await this.fetchDevicesStatus("light");
     if (info.status === 200) {
       info.data.status.forEach((status, index) => {
         const id = getLightKey(index);
@@ -142,7 +165,7 @@ export class BridgeClient {
         }
       });
     }
-    info = await this.fetchDevicesStatus('shutter');
+    info = await this.fetchDevicesStatus("shutter");
     if (info.status === 200) {
       info.data.status.forEach((status, index) => {
         const id = getBlindKey(index);
@@ -160,27 +183,23 @@ export class BridgeClient {
     status: number,
     type?: string
   ): Promise<boolean> {
-    const resp = await axios.get(
-      `${this.address}/user/action.cgi`,
-      {
-        params: {
-          type: type || "light",
-          [`num${status}`]: index
-        }
+    const resp = await axios.get(`${this.address}/user/action.cgi`, {
+      params: {
+        type: type || "light",
+        [`num${status}`]: index
       }
-    );
+    });
     return resp.status === 200;
   }
 
   private async fetchDevicesStatus(type: string) {
     return await axios.get<DeviceStatus>(
-        `${this.address}/user/icon_status.json`,
-        {
-          params: {
-            type
-          }
+      `${this.address}/user/icon_status.json`,
+      {
+        params: {
+          type
         }
+      }
     );
   }
-
 }

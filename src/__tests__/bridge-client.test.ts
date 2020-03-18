@@ -6,46 +6,105 @@ function mockLightIconDesc() {
   nock("http://localhost:8090")
     .get("/icon_desc.json?type=light")
     .reply(200, {
-      num: 20,
+      num: 21,
       desc: [
-        "Luce Studio",
-        "Luce Bagno",
-        "Luce Porta",
-        "Luci appontaggio",
-        "Luce Perimetrale",
-        "Luce disimpegno",
-        "Lampadario camera",
-        "Applique DX",
-        "Applique SX",
-        "Luce Specchio del ba",
-        "Luce Ripostiglio",
-        "Luce Tavolo",
-        "Luce Piano cucina",
-        "Luce corridoio",
-        "Luce ambiente",
-        "Lampadario Sala",
-        "Luce Baracca",
-        "Luce bancone",
-        "Luci Terrazza",
-        "Luce Barbacuo"
+        "Faretti ingresso",
+        "Soffitto",
+        "Presa Angolo",
+        "Presa Parete",
+        "Soffitto",
+        "Luci pensili",
+        "Faretti",
+        "Soffitto",
+        "Prese Comandate",
+        "Soffitto",
+        "Prese Comandate",
+        "Soffitto",
+        "Presa Comandata",
+        "Armadio dx",
+        "Armadio sx",
+        "Soffitto",
+        "Specchio",
+        "Soffitto",
+        "Specchio",
+        "Led doccia",
+        "Terrazzo"
       ],
-      env: [2, 2, 3, 3, 3, 4, 5, 5, 5, 6, 7, 8, 8, 8, 8, 8, 9, 9, 10, 10],
-      status: [1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-      val: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      type: [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      protected: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      env: [1, 1, 1, 1, 2, 2, 3, 4, 4, 5, 5, 6, 6, 6, 6, 7, 7, 8, 8, 8, 9],
+      status: [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      val: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      type: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      protected: [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
       env_desc: [
         "",
-        "Casa",
-        "Zona Notte",
-        "Esterno",
-        "Corridoio",
-        "Camera da letto",
-        "Bagno",
-        "Ripostiglio",
-        "Zona Giorno",
-        "Baracca",
-        "Terrazza"
+        "Salotto",
+        "Cucina",
+        "Corridoio notte",
+        "Camera 1",
+        "Camera 2",
+        "Matrimoniale",
+        "Bagno Giorno",
+        "Bagno Notte",
+        "Terrazzo"
+      ]
+    });
+}
+
+function mockShutterIconDesc() {
+  nock("http://localhost:8090")
+    .get("/icon_desc.json?type=shutter")
+    .reply(200, {
+      num: 10,
+      desc: [
+        "Salotto dx",
+        "Salotto sx",
+        "Cucina",
+        "Camera 1",
+        "Camera 2 dx",
+        "Camera 2 sx",
+        "Matrimoniale Fronte",
+        "Matrimoniale Retro",
+        "Bagno Giorno",
+        "Bagno Notte"
+      ],
+      env: [1, 1, 2, 4, 5, 5, 6, 6, 7, 8],
+      status: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      val: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      type: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+      protected: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      env_desc: [
+        "",
+        "Salotto",
+        "Cucina",
+        "Corridoio notte",
+        "Camera 1",
+        "Camera 2",
+        "Matrimoniale",
+        "Bagno Giorno",
+        "Bagno Notte",
+        "Terrazzo"
       ]
     });
 }
@@ -72,27 +131,38 @@ describe("Comelit Serial Bridge client", () => {
 
   it("should read house structure", async () => {
     mockLightIconDesc();
+    mockShutterIconDesc();
 
     const client = new BridgeClient("localhost", 8090);
     const homeIndex = await client.fecthHomeIndex();
     expect(homeIndex).toBeDefined();
-    expect(homeIndex.roomsIndex.size).toBe(10);
-    expect(homeIndex.lightsIndex.size).toBe(20);
+    expect(homeIndex.roomsIndex.size).toBe(9);
+    expect(homeIndex.blindsIndex.size).toBe(10);
     expect(homeIndex.lightsIndex.get(`DOM#LT#0`).status).toBe(STATUS_ON);
     expect(homeIndex.lightsIndex.get(`DOM#LT#1`).status).toBe(STATUS_ON);
-    expect(homeIndex.lightsIndex.get(`DOM#LT#3`).status).toBe(STATUS_OFF);
+    expect(homeIndex.lightsIndex.get(`DOM#LT#2`).status).toBe(STATUS_OFF);
   });
 
   it("should update the status of index", async () => {
     mockLightIconDesc();
+    mockShutterIconDesc();
 
     nock("http://localhost:8090")
       .get("/user/icon_status.json?type=light")
       .reply(200, {
-        life: 0,
-        domus: "100CC0C00CC0",
-        status: [1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        val: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        life: 1,
+        domus: "10CC0CC00C00",
+        status: [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        val: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      });
+
+    nock("http://localhost:8090")
+      .get("/user/icon_status.json?type=shutter")
+      .reply(200, {
+        life: 1,
+        domus: "10CC0CC00C00",
+        status: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        val: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
       });
 
     const client = new BridgeClient("localhost", 8090);
@@ -101,5 +171,6 @@ describe("Comelit Serial Bridge client", () => {
     expect(homeIndex.lightsIndex.get(`DOM#LT#0`).status).toBe(STATUS_ON);
     expect(homeIndex.lightsIndex.get(`DOM#LT#1`).status).toBe(STATUS_OFF);
     expect(homeIndex.lightsIndex.get(`DOM#LT#2`).status).toBe(STATUS_ON);
+    expect(homeIndex.blindsIndex.get(`DOM#BL#0`).status).toBe(STATUS_ON);
   });
 });
