@@ -180,6 +180,10 @@ export class HomeIndex {
     });
   }
 
+  get(id: string): DeviceData {
+    return this.mainIndex.get(id);
+  }
+
   updateObject(id: string, data: DeviceData): DeviceData {
     if (this.mainIndex.has(id)) {
       const deviceData = this.mainIndex.get(id);
@@ -215,6 +219,9 @@ export class HomeIndex {
         break;
     }
 
+    if (this.mainIndex.has(element.id)) {
+      console.warn(`Overwriting element with key ${element.id} in index!`);
+    }
     this.mainIndex.set(element.id, element.data);
 
     if (element.data.elements) {

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import yargs = require("yargs");
 import chalk = require("chalk");
-import { BridgeClient, getLightKey } from "../bridge-client";
+import { BridgeClient, getBlindKey, getLightKey } from "../bridge-client";
 import { OFF, ON, STATUS_OFF } from "../types";
 
 interface ClientOptions {
@@ -11,13 +11,27 @@ interface ClientOptions {
 
 const options: ClientOptions & any = yargs
   .option("host", { alias: "h", type: "string", demandOption: true })
-  .option("port", { alias: "p", type: "number", demandOption: false, default: 80 })
+  .option("port", {
+    alias: "p",
+    type: "number",
+    demandOption: false,
+    default: 80
+  })
   .command("lights", "Get info about house", {
     list: {
       describe: "Get the list of all lights in the house"
     },
     toggle: {
       describe: "Turn on/off a light",
+      type: "number"
+    }
+  })
+  .command("shutters", "Get info about house", {
+    list: {
+      describe: "Get the list of all shutters in the house"
+    },
+    toggle: {
+      describe: "Open/close a shutter",
       type: "number"
     }
   })
@@ -29,17 +43,42 @@ let client: BridgeClient = null;
 async function listLights() {
   const homeIndex = await client.fecthHomeIndex();
   [...homeIndex.lightsIndex.values()].forEach(light => {
-    console.log(`${light.objectId} - ${light.descrizione}`);
+    console.log(chalk.green(`${light.objectId} - ${light.descrizione}`));
+  });
+}
+
+async function listShutters() {
+  const homeIndex = await client.fecthHomeIndex();
+  [...homeIndex.blindsIndex.values()].forEach(blind => {
+    console.log(chalk.green(`${blind.objectId} - ${blind.descrizione}`));
   });
 }
 
 async function toggleLight(index: number) {
   const homeIndex = await client.fecthHomeIndex();
-  const lightDeviceData = homeIndex.lightsIndex.get(getLightKey(index));
-  if (lightDeviceData.status === STATUS_OFF) {
-    await client.toggleDeviceStatus(index, ON, "light");
+  const lightDeviceData = homeIndex.get(getLightKey(index));
+  if (lightDeviceData) {
+    if (lightDeviceData.status === STATUS_OFF) {
+      await client.toggleDeviceStatus(index, ON, "light");
+    } else {
+      await client.toggleDeviceStatus(index, OFF, "light");
+    }
   } else {
-    await client.toggleDeviceStatus(index, OFF, "light");
+    console.log(chalk.red('Selected light does not exists'));
+  }
+}
+
+async function toggleShutter(index: number) {
+  const homeIndex = await client.fecthHomeIndex();
+  const blindDeviceData = homeIndex.get(getBlindKey(index));
+  if (blindDeviceData) {
+    if (blindDeviceData.status === STATUS_OFF) {
+      await client.toggleDeviceStatus(index, ON, "shutter");
+    } else {
+      await client.toggleDeviceStatus(index, OFF, "shutter");
+    }
+  } else {
+    console.log(chalk.red('Selected shutter does not exists'));
   }
 }
 
@@ -58,6 +97,14 @@ async function run() {
         }
         if (options.toggle && typeof options.toggle === "number") {
           await toggleLight(options.toggle);
+        }
+        break;
+      case "shutters":
+        if (options.list) {
+          await listShutters();
+        }
+        if (options.toggle && typeof options.toggle === "number") {
+          await toggleShutter(options.toggle);
         }
         break;
       default:

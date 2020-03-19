@@ -50,7 +50,7 @@ export function getBlindKey(index: number) {
   return `DOM#BL#${index}`;
 }
 
-function getZoneKey(index: number) {
+export function getZoneKey(index: number) {
   return `GEN#PL#${index}`;
 }
 
