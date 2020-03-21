@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import yargs = require("yargs");
-import chalk = require("chalk");
+import chalk from "chalk";
 import { BridgeClient, getBlindKey, getLightKey } from "../bridge-client";
-import { OFF, ON, STATUS_OFF } from "../types";
+import {OFF, ON, STATUS_OFF, STATUS_ON} from "../types";
 
 interface ClientOptions {
   host: string;
@@ -17,7 +17,7 @@ const options: ClientOptions & any = yargs
     demandOption: false,
     default: 80
   })
-  .command("lights", "Get info about house", {
+  .command("lights", "Get info about house lights", {
     list: {
       describe: "Get the list of all lights in the house"
     },
@@ -26,7 +26,7 @@ const options: ClientOptions & any = yargs
       type: "number"
     }
   })
-  .command("shutters", "Get info about house", {
+  .command("shutters", "Get info about house shutters/blinds", {
     list: {
       describe: "Get the list of all shutters in the house"
     },
@@ -34,6 +34,11 @@ const options: ClientOptions & any = yargs
       describe: "Open/close a shutter",
       type: "number"
     }
+  })
+  .command("clima", "Get info about house thermostats/clima", {
+    list: {
+      describe: "Get the list of all thermostats/clima in the house"
+    },
   })
   .demandCommand()
   .help().argv;
@@ -43,14 +48,21 @@ let client: BridgeClient = null;
 async function listLights() {
   const homeIndex = await client.fecthHomeIndex();
   [...homeIndex.lightsIndex.values()].forEach(light => {
-    console.log(chalk.green(`${light.objectId} - ${light.descrizione}`));
+    console.log(chalk.green(`${light.objectId} - ${light.descrizione} (status ${light.status === STATUS_ON ? 'ON' : 'OFF'})`));
   });
 }
 
 async function listShutters() {
   const homeIndex = await client.fecthHomeIndex();
   [...homeIndex.blindsIndex.values()].forEach(blind => {
-    console.log(chalk.green(`${blind.objectId} - ${blind.descrizione}`));
+    console.log(chalk.green(`${blind.objectId} - ${blind.descrizione} (status ${blind.status === STATUS_ON ? 'DOWN' : 'UP'})`));
+  });
+}
+
+async function listClima() {
+  const homeIndex = await client.fecthHomeIndex();
+  [...homeIndex.thermostatsIndex.values()].forEach(clima => {
+    console.log(chalk.green(`${clima.objectId} - ${clima.descrizione} (status ${clima.status === STATUS_ON ? 'ON' : 'OFF'})`));
   });
 }
 
@@ -105,6 +117,11 @@ async function run() {
         }
         if (options.toggle && typeof options.toggle === "number") {
           await toggleShutter(options.toggle);
+        }
+        break;
+      case "clima":
+        if (options.list) {
+          await listClima();
         }
         break;
       default:

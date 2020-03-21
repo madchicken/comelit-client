@@ -7,9 +7,10 @@ import {
   OBJECT_TYPE,
   ON,
   STATUS_OFF,
-  STATUS_ON
+  STATUS_ON,
+  ThermostatDeviceData
 } from "./types";
-import { ROOT_ID } from "./comelit-client";
+import {ClimaMode, ROOT_ID} from "./comelit-client";
 
 export interface LoginInfo {
   domus: string;
@@ -27,7 +28,7 @@ interface DeviceInfo {
   desc: string[];
   env: number[];
   status: number[];
-  val: number[];
+  val: any[];
   type: number[];
   protected: number[];
   env_desc: string[];
@@ -48,6 +49,10 @@ export function getLightKey(index: number) {
 
 export function getBlindKey(index: number) {
   return `DOM#BL#${index}`;
+}
+
+export function getClimaKey(index: number) {
+  return `DOM#CL#${index}`;
 }
 
 export function getZoneKey(index: number) {
@@ -90,7 +95,6 @@ export class BridgeClient {
         });
       }
     }, rooms);
-
     data.desc.forEach((desc, index) => {
       const roomId = getZoneKey(data.env[index]);
       const room: DeviceData = rooms.get(roomId);
@@ -111,6 +115,7 @@ export class BridgeClient {
         }
       });
     });
+
     data = await this.fetchDeviceDesc("shutter");
     data.desc.forEach((desc, index) => {
       const roomId = getZoneKey(data.env[index]);
@@ -127,6 +132,39 @@ export class BridgeClient {
           isProtected: `${data.protected[index]}`,
           placeId: `${roomId}`
         }
+      });
+    });
+
+    data = await this.fetchDeviceDesc("clima");
+    data.desc.forEach((desc, index) => {
+      const roomId = getZoneKey(data.env[index]);
+      const room: DeviceData = rooms.get(roomId);
+      const value = data.val[index] as any[];
+      const [thermo, dehumidifier] = value;
+      const thermostatData: ThermostatDeviceData = {
+        id: getClimaKey(index),
+        objectId: `{index}`,
+        status: data.status[index] === 1 ? STATUS_ON : STATUS_OFF,
+        type: OBJECT_TYPE.THERMOSTAT,
+        sub_type: data.type[index] === 13 ? OBJECT_SUBTYPE.CLIMA_THERMOSTAT_DEHUMIDIFIER : OBJECT_SUBTYPE.CLIMA_DEHUMIDIFIER,
+        descrizione: desc,
+        isProtected: `${data.protected[index]}`,
+        placeId: `${roomId}`,
+      };
+      if (thermo) {
+        thermostatData.temperatura = thermo[0];
+        thermostatData.auto_man = thermo[3] === 'M' ? ClimaMode.MANUAL : ClimaMode.AUTO;
+        thermostatData.soglia_attiva = thermo[4];
+      }
+
+      if(dehumidifier) {
+        thermostatData.umidita = dehumidifier[0];
+        thermostatData.auto_man_umi = dehumidifier[3] === 'M' ? ClimaMode.MANUAL : ClimaMode.AUTO;
+        thermostatData.soglia_attiva_umi = dehumidifier[4];
+      }
+      room.elements.push({
+        id: getClimaKey(index),
+        data: thermostatData
       });
     });
 
