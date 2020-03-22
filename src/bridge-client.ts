@@ -83,90 +83,94 @@ export class BridgeClient {
     const rooms: DeviceIndex = new Map<string, DeviceData>();
     let data: DeviceInfo = await this.fetchDeviceDesc("light");
     data.env_desc.forEach((desc, index) => {
-      if (desc) {
-        rooms.set(getZoneKey(index), {
-          id: getZoneKey(index),
-          objectId: getZoneKey(index),
-          status: STATUS_OFF,
-          type: OBJECT_TYPE.ZONE,
-          sub_type: OBJECT_SUBTYPE.GENERIC_ZONE,
-          descrizione: desc,
-          elements: []
-        });
-      }
-    }, rooms);
-    data.desc.forEach((desc, index) => {
-      const roomId = getZoneKey(data.env[index]);
-      const room: DeviceData = rooms.get(roomId);
-      room.elements.push({
-        id: getLightKey(index),
-        data: {
-          id: getLightKey(index),
-          objectId: `{index}`,
-          status: data.status[index] === 1 ? STATUS_ON : STATUS_OFF,
-          type: OBJECT_TYPE.LIGHT,
-          sub_type:
-            data.type[index] === 1
-              ? OBJECT_SUBTYPE.TEMPORIZED_LIGHT
-              : OBJECT_SUBTYPE.DIGITAL_LIGHT,
-          descrizione: desc,
-          isProtected: `${data.protected[index]}`,
-          placeId: `${roomId}`
-        }
+      rooms.set(getZoneKey(index), {
+        id: getZoneKey(index),
+        objectId: `${index}`,
+        status: STATUS_OFF,
+        type: OBJECT_TYPE.ZONE,
+        sub_type: OBJECT_SUBTYPE.GENERIC_ZONE,
+        descrizione: desc || 'Root',
+        elements: []
       });
-    });
+    }, rooms);
+    if (data && data.desc) {
+      data.desc.forEach((desc, index) => {
+        const roomId = getZoneKey(data.env[index]);
+        const room: DeviceData = rooms.get(roomId);
+        room.elements.push({
+          id: getLightKey(index),
+          data: {
+            id: getLightKey(index),
+            objectId: `${index}`,
+            status: data.status[index] === 1 ? STATUS_ON : STATUS_OFF,
+            type: OBJECT_TYPE.LIGHT,
+            sub_type:
+              data.type[index] === 1
+                ? OBJECT_SUBTYPE.TEMPORIZED_LIGHT
+                : OBJECT_SUBTYPE.DIGITAL_LIGHT,
+            descrizione: desc,
+            isProtected: `${data.protected[index]}`,
+            placeId: `${roomId}`
+          }
+        });
+      });
+    }
 
     data = await this.fetchDeviceDesc("shutter");
-    data.desc.forEach((desc, index) => {
-      const roomId = getZoneKey(data.env[index]);
-      const room: DeviceData = rooms.get(roomId);
-      room.elements.push({
-        id: getBlindKey(index),
-        data: {
+    if (data && data.desc) {
+      data.desc.forEach((desc, index) => {
+        const roomId = getZoneKey(data.env[index]);
+        const room: DeviceData = rooms.get(roomId);
+        room.elements.push({
           id: getBlindKey(index),
-          objectId: `{index}`,
-          status: data.status[index] === 1 ? STATUS_ON : STATUS_OFF,
-          type: OBJECT_TYPE.BLIND,
-          sub_type: OBJECT_SUBTYPE.ELECTRIC_BLIND,
-          descrizione: desc,
-          isProtected: `${data.protected[index]}`,
-          placeId: `${roomId}`
-        }
+          data: {
+            id: getBlindKey(index),
+            objectId: `${index}`,
+            status: data.status[index] === 1 ? STATUS_ON : STATUS_OFF,
+            type: OBJECT_TYPE.BLIND,
+            sub_type: OBJECT_SUBTYPE.ELECTRIC_BLIND,
+            descrizione: desc,
+            isProtected: `${data.protected[index]}`,
+            placeId: `${roomId}`
+          }
+        });
       });
-    });
+    }
 
     data = await this.fetchDeviceDesc("clima");
-    data.desc.forEach((desc, index) => {
-      const roomId = getZoneKey(data.env[index]);
-      const room: DeviceData = rooms.get(roomId);
-      const value = data.val[index] as any[];
-      const [thermo, dehumidifier] = value;
-      const thermostatData: ThermostatDeviceData = {
-        id: getClimaKey(index),
-        objectId: `{index}`,
-        status: data.status[index] === 1 ? STATUS_ON : STATUS_OFF,
-        type: OBJECT_TYPE.THERMOSTAT,
-        sub_type: data.type[index] === 13 ? OBJECT_SUBTYPE.CLIMA_THERMOSTAT_DEHUMIDIFIER : OBJECT_SUBTYPE.CLIMA_DEHUMIDIFIER,
-        descrizione: desc,
-        isProtected: `${data.protected[index]}`,
-        placeId: `${roomId}`,
-      };
-      if (thermo) {
-        thermostatData.temperatura = thermo[0];
-        thermostatData.auto_man = thermo[3] === 'M' ? ClimaMode.MANUAL : ClimaMode.AUTO;
-        thermostatData.soglia_attiva = thermo[4];
-      }
+    if (data && data.desc) {
+      data.desc.forEach((desc, index) => {
+        const roomId = getZoneKey(data.env[index]);
+        const room: DeviceData = rooms.get(roomId);
+        const value = data.val[index] as any[];
+        const [thermo, dehumidifier] = value;
+        const thermostatData: ThermostatDeviceData = {
+          id: getClimaKey(index),
+          objectId: `${index}`,
+          status: data.status[index] === 1 ? STATUS_ON : STATUS_OFF,
+          type: OBJECT_TYPE.THERMOSTAT,
+          sub_type: data.type[index] === 13 ? OBJECT_SUBTYPE.CLIMA_THERMOSTAT_DEHUMIDIFIER : OBJECT_SUBTYPE.CLIMA_DEHUMIDIFIER,
+          descrizione: desc,
+          isProtected: `${data.protected[index]}`,
+          placeId: `${roomId}`,
+        };
+        if (thermo) {
+          thermostatData.temperatura = thermo[0];
+          thermostatData.auto_man = thermo[3] === 'M' ? ClimaMode.MANUAL : ClimaMode.AUTO;
+          thermostatData.soglia_attiva = thermo[4];
+        }
 
-      if(dehumidifier) {
-        thermostatData.umidita = dehumidifier[0];
-        thermostatData.auto_man_umi = dehumidifier[3] === 'M' ? ClimaMode.MANUAL : ClimaMode.AUTO;
-        thermostatData.soglia_attiva_umi = dehumidifier[4];
-      }
-      room.elements.push({
-        id: getClimaKey(index),
-        data: thermostatData
+        if (dehumidifier) {
+          thermostatData.umidita = dehumidifier[0];
+          thermostatData.auto_man_umi = dehumidifier[3] === 'M' ? ClimaMode.MANUAL : ClimaMode.AUTO;
+          thermostatData.soglia_attiva_umi = dehumidifier[4];
+        }
+        room.elements.push({
+          id: getClimaKey(index),
+          data: thermostatData
+        });
       });
-    });
+    }
 
     return new HomeIndex({
       id: ROOT_ID,
@@ -180,7 +184,7 @@ export class BridgeClient {
   }
 
   private async fetchDeviceDesc(type: string): Promise<DeviceInfo> {
-    const resp = await axios.get<DeviceInfo>(`${this.address}/icon_desc.json`, {
+    const resp = await axios.get<DeviceInfo>(`${this.address}/user/icon_desc.json`, {
       params: {
         type
       }

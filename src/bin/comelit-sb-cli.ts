@@ -17,6 +17,11 @@ const options: ClientOptions & any = yargs
     demandOption: false,
     default: 80
   })
+  .command("rooms", "Get info about house rooms", {
+    list: {
+      describe: "Get the list of all rooms in the house"
+    },
+  })
   .command("lights", "Get info about house lights", {
     list: {
       describe: "Get the list of all lights in the house"
@@ -40,7 +45,7 @@ const options: ClientOptions & any = yargs
       describe: "Get the list of all thermostats/clima in the house"
     },
   })
-  .demandCommand()
+  .demandCommand(1, 1)
   .help().argv;
 
 let client: BridgeClient = null;
@@ -62,7 +67,14 @@ async function listShutters() {
 async function listClima() {
   const homeIndex = await client.fecthHomeIndex();
   [...homeIndex.thermostatsIndex.values()].forEach(clima => {
-    console.log(chalk.green(`${clima.objectId} - ${clima.descrizione} (status ${clima.status === STATUS_ON ? 'ON' : 'OFF'})`));
+    console.log(chalk.green(`${clima.objectId} - ${clima.descrizione} (status ${clima.status === STATUS_ON ? 'ON' : 'OFF'}, Temperature ${parseInt(clima.temperatura)/10}°)`));
+  });
+}
+
+async function listRooms() {
+  const homeIndex = await client.fecthHomeIndex();
+  [...homeIndex.roomsIndex.values()].forEach(room => {
+    console.log(chalk.green(`${room.objectId} - ${room.descrizione}`));
   });
 }
 
@@ -103,7 +115,7 @@ async function run() {
   await client.login();
   try {
     switch (command) {
-      case "lights":
+      case 'lights':
         if (options.list) {
           await listLights();
         }
@@ -111,7 +123,7 @@ async function run() {
           await toggleLight(options.toggle);
         }
         break;
-      case "shutters":
+      case 'shutters':
         if (options.list) {
           await listShutters();
         }
@@ -119,9 +131,14 @@ async function run() {
           await toggleShutter(options.toggle);
         }
         break;
-      case "clima":
+      case 'clima':
         if (options.list) {
           await listClima();
+        }
+        break;
+      case 'rooms':
+        if (options.list) {
+          await listRooms();
         }
         break;
       default:

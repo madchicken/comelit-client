@@ -4,7 +4,7 @@ import { STATUS_OFF, STATUS_ON } from "../types";
 
 function mockLightIconDesc() {
   nock("http://localhost:8090")
-    .get("/icon_desc.json?type=light")
+    .get("/user/icon_desc.json?type=light")
     .reply(200, {
       num: 21,
       desc: [
@@ -52,7 +52,7 @@ function mockLightIconDesc() {
 
 function mockShutterIconDesc() {
   nock("http://localhost:8090")
-    .get("/icon_desc.json?type=shutter")
+    .get("/user/icon_desc.json?type=shutter")
     .reply(200, {
       num: 10,
       desc: [
@@ -87,6 +87,13 @@ function mockShutterIconDesc() {
     });
 }
 
+function mockClimaIconDesc() {
+  nock("http://localhost:8090")
+    .get("/user/icon_desc.json?type=clima")
+    .reply(200, {
+    });
+}
+
 describe("Comelit Serial Bridge client", () => {
   it("should execute login", async () => {
     nock("http://localhost:8090")
@@ -110,11 +117,12 @@ describe("Comelit Serial Bridge client", () => {
   it("should read house structure", async () => {
     mockLightIconDesc();
     mockShutterIconDesc();
+    mockClimaIconDesc();
 
     const client = new BridgeClient("localhost", 8090);
     const homeIndex = await client.fecthHomeIndex();
     expect(homeIndex).toBeDefined();
-    expect(homeIndex.roomsIndex.size).toBe(9);
+    expect(homeIndex.roomsIndex.size).toBe(10);
     expect(homeIndex.blindsIndex.size).toBe(10);
     expect(homeIndex.lightsIndex.get(`DOM#LT#0`).status).toBe(STATUS_ON);
     expect(homeIndex.lightsIndex.get(`DOM#LT#1`).status).toBe(STATUS_ON);
@@ -124,6 +132,7 @@ describe("Comelit Serial Bridge client", () => {
   it("should update the status of index", async () => {
     mockLightIconDesc();
     mockShutterIconDesc();
+    mockClimaIconDesc();
 
     nock("http://localhost:8090")
       .get("/user/icon_status.json?type=light")
