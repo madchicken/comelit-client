@@ -76,6 +76,13 @@ export enum ClimaMode {
   OFF_MANUAL
 }
 
+export enum ClimaStatus {
+  ON = 'on',
+  OFF = 'off',
+  UPPER = 'upper',
+  LOWER = 'lower',
+}
+
 export enum ObjectStatus {
   NONE = -1,
   OFF = 0,

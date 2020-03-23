@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import yargs = require("yargs");
 import chalk from "chalk";
-import { BridgeClient, getBlindKey, getLightKey } from "../bridge-client";
+import {BridgeClient, getBlindKey, getClimaKey, getLightKey, getOtherKey} from "../bridge-client";
 import {OFF, ON, STATUS_OFF, STATUS_ON} from "../types";
+import {ClimaStatus} from "../comelit-client";
 
 interface ClientOptions {
   host: string;
@@ -31,6 +32,15 @@ const options: ClientOptions & any = yargs
       type: "number"
     }
   })
+  .command("outlets", "Get info about house outlets", {
+    list: {
+      describe: "Get the list of all outlets in the house"
+    },
+    toggle: {
+      describe: "Turn on/off an outlets",
+      type: "number"
+    }
+  })
   .command("shutters", "Get info about house shutters/blinds", {
     list: {
       describe: "Get the list of all shutters in the house"
@@ -44,6 +54,14 @@ const options: ClientOptions & any = yargs
     list: {
       describe: "Get the list of all thermostats/clima in the house"
     },
+    toggle: {
+      describe: "Turn on/off a thermostat",
+      type: "number"
+    },
+    temp: {
+      describe: "Set the temperature for a thermostat",
+      type: "string"
+    },
   })
   .demandCommand(1, 1)
   .help().argv;
@@ -54,6 +72,13 @@ async function listLights() {
   const homeIndex = await client.fecthHomeIndex();
   [...homeIndex.lightsIndex.values()].forEach(light => {
     console.log(chalk.green(`${light.objectId} - ${light.descrizione} (status ${light.status === STATUS_ON ? 'ON' : 'OFF'})`));
+  });
+}
+
+async function listOutlets() {
+  const homeIndex = await client.fecthHomeIndex();
+  [...homeIndex.outletsIndex.values()].forEach(outlet => {
+    console.log(chalk.green(`${outlet.objectId} - ${outlet.descrizione} (status ${outlet.status === STATUS_ON ? 'ON' : 'OFF'})`));
   });
 }
 
@@ -92,6 +117,20 @@ async function toggleLight(index: number) {
   }
 }
 
+async function toggleOutlets(index: number) {
+  const homeIndex = await client.fecthHomeIndex();
+  const lightDeviceData = homeIndex.get(getOtherKey(index));
+  if (lightDeviceData) {
+    if (lightDeviceData.status === STATUS_OFF) {
+      await client.toggleDeviceStatus(index, ON, "light");
+    } else {
+      await client.toggleDeviceStatus(index, OFF, "light");
+    }
+  } else {
+    console.log(chalk.red('Selected outlet does not exists'));
+  }
+}
+
 async function toggleShutter(index: number) {
   const homeIndex = await client.fecthHomeIndex();
   const blindDeviceData = homeIndex.get(getBlindKey(index));
@@ -106,11 +145,40 @@ async function toggleShutter(index: number) {
   }
 }
 
+async function switchThermostatState(index: number) {
+  const homeIndex = await client.fecthHomeIndex();
+  const climaDeviceData = homeIndex.get(getClimaKey(index));
+  if (climaDeviceData) {
+    if (climaDeviceData.status === STATUS_ON) {
+      await client.switchThermostatState(index, ClimaStatus.OFF);
+    } else {
+      await client.switchThermostatState(index, ClimaStatus.ON);
+    }
+  }
+}
+
+async function setThermostatTemperature(index: number, temperature: string) {
+  try {
+    const temp = parseFloat(temperature);
+    const homeIndex = await client.fecthHomeIndex();
+    const climaDeviceData = homeIndex.get(getClimaKey(index));
+    if (climaDeviceData) {
+      await client.setTemperature(index, temp * 10);
+    }
+  } catch(e) {
+    console.log(chalk.red(e.message));
+  }
+}
+
+
 async function run() {
   const command = options._[0];
   console.log(
     chalk.green(`Executing command ${command} - ${JSON.stringify(options)}`)
   );
+  console.debug(
+    chalk.green(`${options.toggle}, ${typeof options.toggle}`)
+);
   client = new BridgeClient(options.host, options.port);
   await client.login();
   try {
@@ -119,21 +187,36 @@ async function run() {
         if (options.list) {
           await listLights();
         }
-        if (options.toggle && typeof options.toggle === "number") {
+        if (options.toggle !== undefined) {
           await toggleLight(options.toggle);
+        }
+        break;
+      case 'outlets':
+        if (options.list) {
+          await listOutlets();
+        }
+        if (options.toggle !== undefined) {
+          await toggleOutlets(options.toggle);
         }
         break;
       case 'shutters':
         if (options.list) {
           await listShutters();
         }
-        if (options.toggle && typeof options.toggle === "number") {
+        if (options.toggle !== undefined) {
           await toggleShutter(options.toggle);
         }
         break;
       case 'clima':
         if (options.list) {
           await listClima();
+        }
+        if (options.toggle !== undefined) {
+          if (options.temp !== undefined) {
+            await setThermostatTemperature(options.toggle, options.temp);
+          } else {
+            await switchThermostatState(options.toggle);
+          }
         }
         break;
       case 'rooms':

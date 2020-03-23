@@ -132,7 +132,7 @@ export class VedoClient {
         console.log('trying login with uid ' + uid);
         logged = await this.isLogged(uid);
       } catch (e) {
-        console.error(e);
+        console.error(e.message);
       }
     };
     while (logged === false && retry < MAX_LOGIN_RETRY) {

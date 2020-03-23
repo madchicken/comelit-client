@@ -10,7 +10,7 @@ import {
   STATUS_ON,
   ThermostatDeviceData
 } from "./types";
-import {ClimaMode, ROOT_ID} from "./comelit-client";
+import {ClimaMode, ClimaStatus, ROOT_ID} from "./comelit-client";
 
 export interface LoginInfo {
   domus: string;
@@ -53,6 +53,10 @@ export function getBlindKey(index: number) {
 
 export function getClimaKey(index: number) {
   return `DOM#CL#${index}`;
+}
+
+export function getOtherKey(index: number) {
+  return `DOM#LC#${index}`;
 }
 
 export function getZoneKey(index: number) {
@@ -172,6 +176,27 @@ export class BridgeClient {
       });
     }
 
+    data = await this.fetchDeviceDesc("other");
+    if (data && data.desc) {
+      data.desc.forEach((desc, index) => {
+        const roomId = getZoneKey(data.env[index]);
+        const room: DeviceData = rooms.get(roomId);
+        room.elements.push({
+          id: getOtherKey(index),
+          data: {
+            id: getOtherKey(index),
+            objectId: `${index}`,
+            status: data.status[index] === 1 ? STATUS_ON : STATUS_OFF,
+            type: OBJECT_TYPE.OUTLET,
+            sub_type: OBJECT_SUBTYPE.CONSUMPTION,
+            descrizione: desc,
+            isProtected: `${data.protected[index]}`,
+            placeId: `${roomId}`
+          }
+        });
+      });
+    }
+
     return new HomeIndex({
       id: ROOT_ID,
       objectId: ROOT_ID,
@@ -229,6 +254,49 @@ export class BridgeClient {
       params: {
         type: type || "light",
         [`num${status}`]: index
+      }
+    });
+    return resp.status === 200;
+  }
+
+  async setTemperature(clima: number, temperature: number): Promise<boolean> {
+    const resp = await axios.get(`${this.address}/user/action.cgi`, {
+      params: {
+        clima,
+        thermo: 'set',
+        val: temperature,
+      }
+    });
+    return resp.status === 200;
+  }
+
+  async switchThermostatMode(clima: number, mode: ClimaMode): Promise<boolean> {
+    let thermo = null;
+    if (mode) {
+      switch (mode) {
+        case ClimaMode.AUTO:
+          thermo = 'auto';
+          break;
+        case ClimaMode.MANUAL:
+          thermo = 'man';
+          break;
+      }
+    }
+
+    const resp = await axios.get(`${this.address}/user/action.cgi`, {
+      params: {
+        clima,
+        thermo,
+      }
+    });
+    return resp.status === 200;
+  }
+
+  async switchThermostatState(clima: number, thermo: ClimaStatus): Promise<boolean> {
+    const resp = await axios.get(`${this.address}/user/action.cgi`, {
+      params: {
+        clima,
+        thermo,
       }
     });
     return resp.status === 200;
