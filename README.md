@@ -1,5 +1,5 @@
 [![CircleCI](https://circleci.com/gh/madchicken/comelit-client.svg?style=shield)](https://circleci.com/gh/madchicken/comelit-client)
-[![GitHub version](https://badge.fury.io/gh/madchicken%2Fcomelit-client.svg)](https://badge.fury.io/gh/madchicken%2Fcomelit-client)
+[![npm version](https://badge.fury.io/js/comelit-client.svg)](https://badge.fury.io/js/comelit-client)
 
 # Comelit CLI
 A simple command line tool to interact with the Comelit HUB, Comelit Serial Bridge and Vedo Alarm.
