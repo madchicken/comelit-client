@@ -94,6 +94,13 @@ function mockClimaIconDesc() {
     });
 }
 
+function mockOtherIconDesc() {
+  nock("http://localhost:8090")
+    .get("/user/icon_desc.json?type=other")
+    .reply(200, {
+    });
+}
+
 describe("Comelit Serial Bridge client", () => {
   it("should execute login", async () => {
     nock("http://localhost:8090")
@@ -118,6 +125,7 @@ describe("Comelit Serial Bridge client", () => {
     mockLightIconDesc();
     mockShutterIconDesc();
     mockClimaIconDesc();
+    mockOtherIconDesc();
 
     const client = new BridgeClient("localhost", 8090);
     const homeIndex = await client.fecthHomeIndex();
@@ -133,6 +141,7 @@ describe("Comelit Serial Bridge client", () => {
     mockLightIconDesc();
     mockShutterIconDesc();
     mockClimaIconDesc();
+    mockOtherIconDesc();
 
     nock("http://localhost:8090")
       .get("/user/icon_status.json?type=light")
