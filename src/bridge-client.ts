@@ -10,7 +10,7 @@ import {
   STATUS_ON,
   ThermostatDeviceData
 } from "./types";
-import {ClimaMode, ClimaStatus, ROOT_ID} from "./comelit-client";
+import {ClimaMode, ClimaStatus, ROOT_ID, ThermoSeason} from "./comelit-client";
 
 export interface LoginInfo {
   domus: string;
@@ -159,14 +159,49 @@ export class BridgeClient {
           placeId: `${roomId}`,
         };
         if (thermo) {
+          const state = thermo[2]; // can be U, L, O
+          const mode = thermo[3]; // can be M, A
+
           thermostatData.temperatura = thermo[0];
-          thermostatData.auto_man = thermo[3] === 'M' ? ClimaMode.MANUAL : ClimaMode.AUTO;
+          switch (mode) {
+            case 'M':
+              thermostatData.auto_man = state === 'O' ? ClimaMode.OFF_MANUAL : ClimaMode.MANUAL;
+              break;
+            case 'A':
+              thermostatData.auto_man = state === 'O' ? ClimaMode.OFF_AUTO : ClimaMode.AUTO;
+              break;
+          }
           thermostatData.soglia_attiva = thermo[4];
+
+          if (mode === 'L') {
+            thermostatData.est_inv = ThermoSeason.SUMMER;
+          } else if (mode === 'U') {
+            thermostatData.est_inv = ThermoSeason.WINTER;
+          }
         }
 
         if (dehumidifier) {
           thermostatData.umidita = dehumidifier[0];
-          thermostatData.auto_man_umi = dehumidifier[3] === 'M' ? ClimaMode.MANUAL : ClimaMode.AUTO;
+          const state = dehumidifier[2]; // can be U, L, O
+          const mode = dehumidifier[3]; // can be M, A
+
+          thermostatData.temperatura = dehumidifier[0];
+          switch (mode) {
+            case 'M':
+              thermostatData.auto_man_umi = state === 'O' ? ClimaMode.OFF_MANUAL : ClimaMode.MANUAL;
+              break;
+            case 'A':
+              thermostatData.auto_man_umi = state === 'O' ? ClimaMode.OFF_AUTO : ClimaMode.AUTO;
+              break;
+          }
+          thermostatData.soglia_attiva_umi = dehumidifier[4];
+
+          if (mode === 'L') {
+            thermostatData.est_inv = ThermoSeason.SUMMER;
+          } else if (mode === 'U') {
+            thermostatData.est_inv = ThermoSeason.WINTER;
+          }
+
           thermostatData.soglia_attiva_umi = dehumidifier[4];
         }
         room.elements.push({

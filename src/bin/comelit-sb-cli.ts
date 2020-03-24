@@ -2,8 +2,8 @@
 import yargs = require("yargs");
 import chalk from "chalk";
 import {BridgeClient, getBlindKey, getClimaKey, getLightKey, getOtherKey} from "../bridge-client";
-import {OFF, ON, STATUS_OFF, STATUS_ON} from "../types";
-import {ClimaStatus} from "../comelit-client";
+import {OFF, ON, STATUS_OFF, STATUS_ON, ThermostatDeviceData} from "../types";
+import {ClimaMode, ClimaStatus} from "../comelit-client";
 
 interface ClientOptions {
   host: string;
@@ -119,12 +119,12 @@ async function toggleLight(index: number) {
 
 async function toggleOutlets(index: number) {
   const homeIndex = await client.fecthHomeIndex();
-  const lightDeviceData = homeIndex.get(getOtherKey(index));
-  if (lightDeviceData) {
-    if (lightDeviceData.status === STATUS_OFF) {
-      await client.toggleDeviceStatus(index, ON, "light");
+  const otherDeviceData = homeIndex.get(getOtherKey(index));
+  if (otherDeviceData) {
+    if (otherDeviceData.status === STATUS_OFF) {
+      await client.toggleDeviceStatus(index, ON, "other");
     } else {
-      await client.toggleDeviceStatus(index, OFF, "light");
+      await client.toggleDeviceStatus(index, OFF, "other");
     }
   } else {
     console.log(chalk.red('Selected outlet does not exists'));
@@ -147,12 +147,12 @@ async function toggleShutter(index: number) {
 
 async function switchThermostatState(index: number) {
   const homeIndex = await client.fecthHomeIndex();
-  const climaDeviceData = homeIndex.get(getClimaKey(index));
+  const climaDeviceData: ThermostatDeviceData = homeIndex.get(getClimaKey(index));
   if (climaDeviceData) {
-    if (climaDeviceData.status === STATUS_ON) {
-      await client.switchThermostatState(index, ClimaStatus.OFF);
-    } else {
+    if (climaDeviceData.auto_man === ClimaMode.OFF_AUTO || climaDeviceData.auto_man === ClimaMode.OFF_MANUAL) {
       await client.switchThermostatState(index, ClimaStatus.ON);
+    } else {
+      await client.switchThermostatState(index, ClimaStatus.OFF);
     }
   }
 }

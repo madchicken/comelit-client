@@ -492,8 +492,8 @@ export class ComelitClient extends PromiseBasedQueue<
     return this.sendAction(id, ACTION_TYPE.CLIMA_SET_POINT, temperature);
   }
 
-  async switchThermostatState(id: string, state: ClimaMode): Promise<boolean> {
-    return this.sendAction(id, ACTION_TYPE.SWITCH_CLIMA_MODE, state);
+  async switchThermostatMode(id: string, mode: ClimaMode): Promise<boolean> {
+    return this.sendAction(id, ACTION_TYPE.SWITCH_CLIMA_MODE, mode);
   }
 
   async sendAction(id: string, type: ACTION_TYPE, value: any) {
