@@ -119,12 +119,12 @@ async function toggleLight(index: number) {
 
 async function toggleOutlets(index: number) {
   const homeIndex = await client.fecthHomeIndex();
-  const lightDeviceData = homeIndex.get(getOtherKey(index));
-  if (lightDeviceData) {
-    if (lightDeviceData.status === STATUS_OFF) {
-      await client.toggleDeviceStatus(index, ON, "light");
+  const otherDeviceData = homeIndex.get(getOtherKey(index));
+  if (otherDeviceData) {
+    if (otherDeviceData.status === STATUS_OFF) {
+      await client.toggleDeviceStatus(index, ON, "other");
     } else {
-      await client.toggleDeviceStatus(index, OFF, "light");
+      await client.toggleDeviceStatus(index, OFF, "other");
     }
   } else {
     console.log(chalk.red('Selected outlet does not exists'));
