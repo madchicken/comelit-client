@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import yargs = require('yargs');
 import chalk from 'chalk';
-import { ACTION_TYPE, ComelitClient, ROOT_ID } from '../comelit-client';
+import {ACTION_TYPE, ClimaMode, ComelitClient, ROOT_ID, ThermoSeason} from '../comelit-client';
+import {OFF, ON, STATUS_OFF, STATUS_ON, ThermostatDeviceData} from '../types';
+
 const readline = require('readline');
 
 const DEFAULT_BROKER_PASSWORD = 'sf1nE9bjPc';
@@ -19,35 +21,50 @@ interface ClientOptions {
 }
 
 const options: ClientOptions & any = yargs
-  .options({})
-  .command('scan', 'Find the HUB on your network')
-  .command('info', 'Get info about a device', {
-    host: { type: 'string', demandOption: true },
+  .options({
     username: {
+      description: 'Username to use when authenticating to the HUB',
       alias: 'u',
       type: 'string',
       demandOption: true,
       default: 'admin',
     },
     password: {
+      description: 'Password to use when authenticating to the HUB',
       alias: 'p',
       type: 'string',
       demandOption: true,
       default: 'admin',
     },
     broker_username: {
+      description: 'Username to use to connect MQTT broker',
       alias: 'bu',
       type: 'string',
       demandOption: true,
       default: DEFAULT_BROKER_USER,
     },
     broker_password: {
+      description: 'Password to use to connect MQTT broker',
       alias: 'bp',
       type: 'string',
       demandOption: true,
       default: DEFAULT_BROKER_PASSWORD,
     },
-    client_id: { type: 'string', default: null },
+    client_id: {
+      description:
+        'Client ID to use when connecting to the broker. Leave it empty to have the client generate it for you.',
+      type: 'string',
+      default: null,
+    },
+  })
+  .command('scan', 'Find the HUB on your network')
+  .command('info', 'Get info about a device', {
+    host: {
+      alias: 'h',
+      description: 'broker host or IP',
+      type: 'string',
+      demandOption: true,
+    },
     id: { type: 'string', demandOption: true },
     detail: { type: 'number', demandOption: false, default: 1 },
   })
@@ -80,95 +97,104 @@ const options: ClientOptions & any = yargs
     client_id: { type: 'string', default: null },
   })
   .command('action', 'Send action to device', {
-    host: { type: 'string', demandOption: true },
-    username: {
-      alias: 'u',
+    host: {
+      alias: 'h',
+      description: 'broker host or IP',
       type: 'string',
       demandOption: true,
-      default: 'admin',
     },
-    password: {
-      alias: 'p',
-      type: 'string',
-      demandOption: true,
-      default: 'admin',
-    },
-    broker_username: {
-      alias: 'bu',
-      type: 'string',
-      demandOption: true,
-      default: DEFAULT_BROKER_USER,
-    },
-    broker_password: {
-      alias: 'bp',
-      type: 'string',
-      demandOption: true,
-      default: DEFAULT_BROKER_PASSWORD,
-    },
-    client_id: { type: 'string', default: null },
     id: { type: 'string', demandOption: true },
     type: { type: 'number', demandOption: true, default: ACTION_TYPE.SET },
     value: { type: 'string', demandOption: true },
   })
   .command('zones', 'Get zones for a given parent zone', {
-    host: { type: 'string', demandOption: true },
-    username: {
-      alias: 'u',
+    host: {
+      alias: 'h',
+      description: 'broker host or IP',
       type: 'string',
       demandOption: true,
-      default: 'admin',
     },
-    password: {
-      alias: 'p',
+    id: {
+      description: 'ID of the parent room/zone',
       type: 'string',
       demandOption: true,
-      default: 'admin',
     },
-    broker_username: {
-      alias: 'bu',
+  })
+  .command('rooms', 'Get info about house rooms', {
+    host: {
+      alias: 'h',
+      description: 'broker host or IP',
       type: 'string',
       demandOption: true,
-      default: DEFAULT_BROKER_USER,
     },
-    broker_password: {
-      alias: 'bp',
+  })
+  .command('lights', 'Get info about house lights', {
+    host: {
+      alias: 'h',
+      description: 'broker host or IP',
       type: 'string',
       demandOption: true,
-      default: DEFAULT_BROKER_PASSWORD,
     },
-    client_id: { type: 'string', default: null },
-    id: { type: 'string', demandOption: true, default: ROOT_ID },
+    toggle: {
+      describe: 'Turn on/off a light',
+      type: 'string',
+    },
+  })
+  .command('outlets', 'Get the list of all outlets in the house', {
+    host: {
+      alias: 'h',
+      description: 'broker host or IP',
+      type: 'string',
+      demandOption: true,
+    },
+    toggle: {
+      describe: 'Turn on/off an outlets',
+      type: 'number',
+    },
+  })
+  .command('shutters', 'Get the list of all shutters in the house', {
+    host: {
+      alias: 'h',
+      description: 'broker host or IP',
+      type: 'string',
+      demandOption: true,
+    },
+    toggle: {
+      describe: 'Open/close a shutter',
+      type: 'number',
+    },
+  })
+  .command('clima', 'Get the list of all thermostats/clima in the house', {
+    host: {
+      alias: 'h',
+      description: 'broker host or IP',
+      type: 'string',
+      demandOption: true,
+    },
+    toggle: {
+      describe: 'Turn on/off a thermostat',
+      type: 'number',
+    },
+    temp: {
+      describe: 'Set the temperature for a thermostat',
+      type: 'string',
+    },
+    season: {
+      describe: 'Set the season for a thermostat',
+      type: 'string',
+      choices: ['winter', 'summer'],
+    },
   })
   .command(
     'listen',
     'Optionally Subscribe to an object and listen on the read topic (CTRL+C to exit)',
     {
-      host: { type: 'string', demandOption: true },
-      username: {
-        alias: 'u',
+      host: {
+        alias: 'h',
+        description: 'broker host or IP',
         type: 'string',
         demandOption: true,
-        default: 'admin',
       },
-      password: {
-        alias: 'p',
-        type: 'string',
-        demandOption: true,
-        default: 'admin',
-      },
-      broker_username: {
-        alias: 'bu',
-        type: 'string',
-        demandOption: true,
-        default: DEFAULT_BROKER_USER,
-      },
-      broker_password: {
-        alias: 'bp',
-        type: 'string',
-        demandOption: true,
-        default: DEFAULT_BROKER_PASSWORD,
-      },
-      client_id: { type: 'string', default: null },
       id: {
         type: 'string',
         demandOption: false,
@@ -212,14 +238,47 @@ async function run() {
           await params();
           break;
         case 'action':
-          await action(
-            options.id as string,
-            options.type as number,
-            options.value
-          );
+          await action(options.id as string, options.type as number, options.value);
           break;
         case 'zones':
           await zones(options.id as string);
+          break;
+        case 'rooms':
+          await listRooms();
+          break;
+        case 'lights':
+          if (options.toggle !== undefined) {
+            await toggleLight(options.toggle);
+          } else {
+            await listLights();
+          }
+          break;
+        case 'outlets':
+          if (options.toggle !== undefined) {
+            await toggleOutlets(options.toggle);
+          } else {
+            await listOutlets();
+          }
+          break;
+        case 'shutters':
+          if (options.toggle !== undefined) {
+            await toggleShutter(options.toggle);
+          } else {
+            await listShutters();
+          }
+          break;
+        case 'clima':
+          if (options.toggle !== undefined) {
+            if (options.temp !== undefined) {
+              await setThermostatTemperature(options.toggle, options.temp);
+            } else if (options.season !== undefined) {
+              await switchThermostatSeason(options.toggle, options.season);
+            } else {
+              await switchThermostatState(options.toggle);
+            }
+          } else {
+            await listClima();
+          }
           break;
         case 'listen':
           await listen(options.id as string, options.topic as string);
@@ -251,9 +310,7 @@ async function params() {
 }
 
 async function action(id: string, type: number, value: any) {
-  console.log(
-    chalk.green(`Sending action ${type} with value ${value} to ${id}`)
-  );
+  console.log(chalk.green(`Sending action ${type} with value ${value} to ${id}`));
   const data = await client.sendAction(id, type, value);
   console.log(JSON.stringify(data, null, 4));
 }
@@ -262,6 +319,155 @@ async function zones(id: string) {
   console.log(chalk.green(`Retrieving zones for object ${id}`));
   const data = await client.zones(id);
   console.log(JSON.stringify(data, null, 4));
+}
+
+async function listRooms() {
+  const homeIndex = await client.fecthHomeIndex();
+  [...homeIndex.roomsIndex.values()].forEach(room => {
+    console.log(chalk.green(`${room.id} - ${room.descrizione}`));
+  });
+}
+
+async function listLights() {
+  const homeIndex = await client.fecthHomeIndex();
+  [...homeIndex.lightsIndex.values()].forEach(light => {
+    console.log(
+      chalk.green(
+        `${light.objectId} - ${light.descrizione} (status ${
+          light.status === STATUS_ON ? 'ON' : 'OFF'
+        })`
+      )
+    );
+  });
+}
+
+async function listOutlets() {
+  const homeIndex = await client.fecthHomeIndex();
+  [...homeIndex.outletsIndex.values()].forEach(outlet => {
+    console.log(
+      chalk.green(
+        `${outlet.objectId} - ${outlet.descrizione} (status ${
+          outlet.status === STATUS_ON ? 'ON' : 'OFF'
+        })`
+      )
+    );
+  });
+}
+
+async function listShutters() {
+  const homeIndex = await client.fecthHomeIndex();
+  [...homeIndex.blindsIndex.values()].forEach(blind => {
+    console.log(
+      chalk.green(
+        `${blind.objectId} - ${blind.descrizione} (status ${
+          blind.status === STATUS_ON ? 'DOWN' : 'UP'
+        })`
+      )
+    );
+  });
+}
+
+async function listClima() {
+  const homeIndex = await client.fecthHomeIndex();
+  [...homeIndex.thermostatsIndex.values()].forEach(clima => {
+    const auto_man = clima.auto_man;
+    const isOff = auto_man === ClimaMode.OFF_AUTO || auto_man === ClimaMode.OFF_MANUAL;
+    const isManual = auto_man === ClimaMode.OFF_MANUAL || auto_man === ClimaMode.MANUAL;
+    console.log(
+      chalk.green(
+        `${clima.objectId} - ${clima.descrizione} (status ${isOff ? 'OFF' : 'ON'}, ${
+          isManual ? 'manual mode' : 'auto mode'
+        }, ${clima.est_inv === ThermoSeason.WINTER ? 'winter' : 'summer'}, Temperature ${parseInt(
+          clima.temperatura
+        ) / 10}°, Humidity level ${parseInt(clima.umidita)}%). Heating/Dehumidification is ${clima.status === STATUS_ON ? 'on' : 'off'}`
+      )
+    );
+  });
+}
+
+async function toggleLight(index: string) {
+  const homeIndex = await client.fecthHomeIndex();
+  const lightDeviceData = homeIndex.get(index);
+  if (lightDeviceData) {
+    if (lightDeviceData.status === STATUS_OFF) {
+      await client.toggleDeviceStatus(index, ON);
+    } else {
+      await client.toggleDeviceStatus(index, OFF);
+    }
+  } else {
+    console.log(chalk.red('Selected light does not exists'));
+  }
+}
+
+async function toggleOutlets(index: string) {
+  const homeIndex = await client.fecthHomeIndex();
+  const otherDeviceData = homeIndex.get(index);
+  if (otherDeviceData) {
+    if (otherDeviceData.status === STATUS_OFF) {
+      await client.toggleDeviceStatus(index, ON);
+    } else {
+      await client.toggleDeviceStatus(index, OFF);
+    }
+  } else {
+    console.log(chalk.red('Selected outlet does not exists'));
+  }
+}
+
+async function toggleShutter(index: string) {
+  const homeIndex = await client.fecthHomeIndex();
+  const blindDeviceData = homeIndex.get(index);
+  if (blindDeviceData) {
+    if (blindDeviceData.status === STATUS_OFF) {
+      await client.toggleDeviceStatus(index, ON);
+    } else {
+      await client.toggleDeviceStatus(index, OFF);
+    }
+  } else {
+    console.log(chalk.red('Selected shutter does not exists'));
+  }
+}
+
+async function switchThermostatState(index: string) {
+  const homeIndex = await client.fecthHomeIndex();
+  const climaDeviceData: ThermostatDeviceData = homeIndex.get(index);
+  if (climaDeviceData) {
+    switch (climaDeviceData.auto_man) {
+      case ClimaMode.OFF_AUTO:
+        await client.switchThermostatMode(index, ClimaMode.AUTO);
+        break;
+      case ClimaMode.OFF_MANUAL:
+        await client.switchThermostatMode(index, ClimaMode.MANUAL);
+        break;
+      case ClimaMode.MANUAL:
+      case ClimaMode.AUTO:
+        await client.sendAction(index, ACTION_TYPE.SET, 0);
+        break;
+    }
+  }
+}
+
+async function switchThermostatSeason(index: string, season: string) {
+  const homeIndex = await client.fecthHomeIndex();
+  const climaDeviceData: ThermostatDeviceData = homeIndex.get(index);
+  if (climaDeviceData) {
+    await client.switchThermostatSeason(
+      index,
+      season === 'summer' ? ThermoSeason.SUMMER : ThermoSeason.WINTER
+    );
+  }
+}
+
+async function setThermostatTemperature(index: string, temperature: string) {
+  try {
+    const temp = parseFloat(temperature);
+    const homeIndex = await client.fecthHomeIndex();
+    const climaDeviceData = homeIndex.get(index);
+    if (climaDeviceData) {
+      await client.setTemperature(index, temp * 10);
+    }
+  } catch (e) {
+    console.log(chalk.red(e.message));
+  }
 }
 
 async function scan() {

@@ -1,5 +1,5 @@
 import nock from "nock";
-import { BridgeClient } from "../bridge-client";
+import { ComelitSbClient } from "../comelit-sb-client";
 import { STATUS_OFF, STATUS_ON } from "../types";
 
 function mockLightIconDesc() {
@@ -116,7 +116,7 @@ describe("Comelit Serial Bridge client", () => {
         icon_status: "001212200"
       });
 
-    const client = new BridgeClient("localhost", 8090);
+    const client = new ComelitSbClient("localhost", 8090);
     const logged = await client.login();
     expect(logged).toBe(true);
   });
@@ -127,7 +127,7 @@ describe("Comelit Serial Bridge client", () => {
     mockClimaIconDesc();
     mockOtherIconDesc();
 
-    const client = new BridgeClient("localhost", 8090);
+    const client = new ComelitSbClient("localhost", 8090);
     const homeIndex = await client.fecthHomeIndex();
     expect(homeIndex).toBeDefined();
     expect(homeIndex.roomsIndex.size).toBe(10);
@@ -161,7 +161,7 @@ describe("Comelit Serial Bridge client", () => {
         val: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
       });
 
-    const client = new BridgeClient("localhost", 8090);
+    const client = new ComelitSbClient("localhost", 8090);
     const homeIndex = await client.fecthHomeIndex();
     await client.updateHomeStatus(homeIndex);
     expect(homeIndex.lightsIndex.get(`DOM#LT#0`).status).toBe(STATUS_ON);
