@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import yargs = require('yargs');
 import chalk from 'chalk';
-import {ACTION_TYPE, ClimaMode, ComelitClient, ROOT_ID, ThermoSeason} from '../comelit-client';
+import {ACTION_TYPE, ClimaMode, ClimaOnOff, ComelitClient, ROOT_ID, ThermoSeason} from '../comelit-client';
 import {OFF, ON, STATUS_OFF, STATUS_ON, ThermostatDeviceData} from '../types';
 
 const readline = require('readline');
@@ -280,6 +280,17 @@ async function run() {
             await listClima();
           }
           break;
+        case 'umi':
+          if (options.toggle !== undefined) {
+            if (options.temp !== undefined) {
+              await setHumidifierTemperature(options.toggle, options.temp);
+            } else {
+              await switchHumidifierState(options.toggle);
+            }
+          } else {
+            await listClima();
+          }
+          break;
         case 'listen':
           await listen(options.id as string, options.topic as string);
           break;
@@ -440,7 +451,7 @@ async function switchThermostatState(index: string) {
         break;
       case ClimaMode.MANUAL:
       case ClimaMode.AUTO:
-        await client.sendAction(index, ACTION_TYPE.SET, 0);
+        await client.toggleThermostatDehumidifierStatus(index, ClimaOnOff.OFF);
         break;
     }
   }
@@ -464,6 +475,38 @@ async function setThermostatTemperature(index: string, temperature: string) {
     const climaDeviceData = homeIndex.get(index);
     if (climaDeviceData) {
       await client.setTemperature(index, temp * 10);
+    }
+  } catch (e) {
+    console.log(chalk.red(e.message));
+  }
+}
+
+async function switchHumidifierState(index: string) {
+  const homeIndex = await client.fecthHomeIndex();
+  const climaDeviceData: ThermostatDeviceData = homeIndex.get(index);
+  if (climaDeviceData) {
+    switch (climaDeviceData.auto_man_umi) {
+      case ClimaMode.OFF_AUTO:
+        await client.switchHumidifierMode(index, ClimaMode.AUTO);
+        break;
+      case ClimaMode.OFF_MANUAL:
+        await client.switchHumidifierMode(index, ClimaMode.MANUAL);
+        break;
+      case ClimaMode.MANUAL:
+      case ClimaMode.AUTO:
+        await client.toggleThermostatDehumidifierStatus(index, ClimaOnOff.OFF_HUMI);
+        break;
+    }
+  }
+}
+
+async function setHumidifierTemperature(index: string, temperature: string) {
+  try {
+    const temp = parseFloat(temperature);
+    const homeIndex = await client.fecthHomeIndex();
+    const climaDeviceData = homeIndex.get(index);
+    if (climaDeviceData) {
+      await client.setHumidifierTemperature(index, temp);
     }
   } catch (e) {
     console.log(chalk.red(e.message));

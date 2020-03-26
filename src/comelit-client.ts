@@ -77,6 +77,15 @@ export enum ClimaMode {
   OFF_MANUAL = '6',
 }
 
+export enum ClimaOnOff {
+  OFF_THERMO,
+  ON_THERMO,
+  OFF_HUMI,
+  ON_HUMI,
+  OFF,
+  ON,
+}
+
 export enum ObjectStatus {
   NONE = -1,
   OFF = 0,
@@ -460,6 +469,18 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
 
   async switchThermostatSeason(id: string, mode: ThermoSeason): Promise<boolean> {
     return this.sendAction(id, ACTION_TYPE.SWITCH_SEASON, parseInt(mode));
+  }
+
+  async setHumidifierTemperature(id: string, temperature: number): Promise<boolean> {
+    return this.sendAction(id, ACTION_TYPE.UMI_SETPOINT, temperature);
+  }
+
+  async switchHumidifierMode(id: string, mode: ClimaMode): Promise<boolean> {
+    return this.sendAction(id, ACTION_TYPE.SWITCH_UMI_MODE, parseInt(mode));
+  }
+
+  async toggleThermostatDehumidifierStatus(id: string, mode: ClimaOnOff): Promise<boolean> {
+    return this.sendAction(id, ACTION_TYPE.SET, mode);
   }
 
   async sendAction(id: string, type: ACTION_TYPE, value: any) {
