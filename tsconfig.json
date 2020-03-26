@@ -13,5 +13,6 @@
     "declarationMap": true
   },
   "lib": ["esnext"],
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["**/__tests__/*"]
 }
