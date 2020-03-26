@@ -10,7 +10,7 @@ import {
   STATUS_ON,
   ThermostatDeviceData
 } from "./types";
-import {ClimaMode, ClimaStatus, ROOT_ID, ThermoSeason} from "./comelit-client";
+import {ClimaMode, ROOT_ID, ThermoSeason} from "./comelit-client";
 
 export interface LoginInfo {
   domus: string;
@@ -63,7 +63,7 @@ export function getZoneKey(index: number) {
   return `GEN#PL#${index}`;
 }
 
-export class BridgeClient {
+export class ComelitSbClient {
   private readonly address: string;
 
   constructor(address: string, port: number = 80) {
@@ -327,11 +327,11 @@ export class BridgeClient {
     return resp.status === 200;
   }
 
-  async switchThermostatState(clima: number, thermo: ClimaStatus): Promise<boolean> {
+  async switchThermostatSeason(clima: number, season: ThermoSeason): Promise<boolean> {
     const resp = await axios.get(`${this.address}/user/action.cgi`, {
       params: {
         clima,
-        thermo,
+        thermo: season === ThermoSeason.WINTER ? 'upper' : 'lower',
       }
     });
     return resp.status === 200;
