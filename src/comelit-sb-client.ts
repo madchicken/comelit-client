@@ -69,7 +69,7 @@ function updateClima(value: any[][], thermostatData: ThermostatDeviceData) {
     const state = thermo[2]; // can be U, L, O
     const mode = thermo[3]; // can be M, A
 
-    thermostatData.temperatura = thermo[0] as string;
+    thermostatData.temperatura = thermo[0];
     switch (mode) {
       case 'M':
         thermostatData.auto_man = state === 'O' ? ClimaMode.OFF_MANUAL : ClimaMode.MANUAL;
@@ -92,7 +92,7 @@ function updateClima(value: any[][], thermostatData: ThermostatDeviceData) {
     const state = dehumidifier[2]; // can be U, L, O
     const mode = dehumidifier[3]; // can be M, A
 
-    thermostatData.temperatura = dehumidifier[0];
+    thermostatData.umidita = dehumidifier[0];
     switch (mode) {
       case 'M':
         thermostatData.auto_man_umi = state === 'O' ? ClimaMode.OFF_MANUAL : ClimaMode.MANUAL;
