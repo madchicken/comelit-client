@@ -157,6 +157,7 @@ export enum OBJECT_SUBTYPE {
 
 export const ON = 1;
 export const OFF = 0;
+export const IDLE = 2;
 export const STATUS_ON = "1";
 export const STATUS_OFF = "0";
 
