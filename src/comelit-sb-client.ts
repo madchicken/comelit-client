@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios from 'axios';
 import {
   DeviceData,
   DeviceIndex,
@@ -8,11 +8,11 @@ import {
   ON,
   STATUS_OFF,
   STATUS_ON,
-  ThermostatDeviceData
-} from "./types";
-import {ClimaMode, ROOT_ID, ThermoSeason} from "./comelit-client";
+  ThermostatDeviceData,
+} from './types';
+import { ClimaMode, ClimaOnOff, ROOT_ID, ThermoSeason } from './comelit-client';
 
-export interface LoginInfo {
+export interface BridgeLoginInfo {
   domus: string;
   life: number;
   logged: number;
@@ -28,7 +28,7 @@ interface DeviceInfo {
   desc: string[];
   env: number[];
   status: number[];
-  val: any[];
+  val: number[] | any[][][];
   type: number[];
   protected: number[];
   env_desc: string[];
@@ -38,7 +38,7 @@ interface DeviceStatus {
   life: number;
   domus: string;
   status: number[];
-  val: number[];
+  val: number[] | any[][][];
 }
 
 const ANONYMOUS = 99;
@@ -63,19 +63,76 @@ export function getZoneKey(index: number) {
   return `GEN#PL#${index}`;
 }
 
-export class ComelitSbClient {
-  private readonly address: string;
+function updateClima(value: any[][], thermostatData: ThermostatDeviceData) {
+  const [thermo, dehumidifier] = value;
+  if (thermo) {
+    const state = thermo[2]; // can be U, L, O
+    const mode = thermo[3]; // can be M, A
 
-  constructor(address: string, port: number = 80) {
-    this.address = address.startsWith("http://")
-      ? `${address}:${port}`
-      : `http://${address}:${port}`;
+    thermostatData.temperatura = thermo[0];
+    switch (mode) {
+      case 'M':
+        thermostatData.auto_man = state === 'O' ? ClimaMode.OFF_MANUAL : ClimaMode.MANUAL;
+        break;
+      case 'A':
+        thermostatData.auto_man = state === 'O' ? ClimaMode.OFF_AUTO : ClimaMode.AUTO;
+        break;
+    }
+    thermostatData.soglia_attiva = thermo[4];
+
+    if (mode === 'L') {
+      thermostatData.est_inv = ThermoSeason.SUMMER;
+    } else if (mode === 'U') {
+      thermostatData.est_inv = ThermoSeason.WINTER;
+    }
   }
 
-  public init() {}
+  if (dehumidifier) {
+    thermostatData.umidita = dehumidifier[0];
+    const state = dehumidifier[2]; // can be U, L, O
+    const mode = dehumidifier[3]; // can be M, A
+
+    thermostatData.umidita = dehumidifier[0];
+    switch (mode) {
+      case 'M':
+        thermostatData.auto_man_umi = state === 'O' ? ClimaMode.OFF_MANUAL : ClimaMode.MANUAL;
+        break;
+      case 'A':
+        thermostatData.auto_man_umi = state === 'O' ? ClimaMode.OFF_AUTO : ClimaMode.AUTO;
+        break;
+    }
+    thermostatData.soglia_attiva_umi = dehumidifier[4];
+
+    if (mode === 'L') {
+      thermostatData.est_inv = ThermoSeason.SUMMER;
+    } else if (mode === 'U') {
+      thermostatData.est_inv = ThermoSeason.WINTER;
+    }
+
+    thermostatData.soglia_attiva_umi = dehumidifier[4];
+  }
+}
+
+export class ComelitSbClient {
+  private readonly address: string;
+  private readonly onUpdate: (objId: string, device: DeviceData) => void;
+  private readonly log: (message?: any, ...optionalParams: any[]) => void;
+
+  constructor(
+    address: string,
+    port: number = 80,
+    onUpdate?: (objId: string, device: DeviceData) => void,
+    log?: (message?: any, ...optionalParams: any[]) => void
+  ) {
+    this.address = address.startsWith('http://')
+      ? `${address}:${port}`
+      : `http://${address}:${port}`;
+    this.onUpdate = onUpdate;
+    this.log = log || console.log;
+  }
 
   async login(): Promise<boolean> {
-    const info = await axios.get<LoginInfo>(`${this.address}/login.json`);
+    const info = await axios.get<BridgeLoginInfo>(`${this.address}/login.json`);
     return info.status === 200 && info.data.logged === ANONYMOUS;
   }
 
@@ -85,7 +142,7 @@ export class ComelitSbClient {
 
   async fecthHomeIndex(): Promise<HomeIndex> {
     const rooms: DeviceIndex = new Map<string, DeviceData>();
-    let data: DeviceInfo = await this.fetchDeviceDesc("light");
+    let data: DeviceInfo = await this.fetchDeviceDesc('light');
     data.env_desc.forEach((desc, index) => {
       rooms.set(getZoneKey(index), {
         id: getZoneKey(index),
@@ -94,7 +151,7 @@ export class ComelitSbClient {
         type: OBJECT_TYPE.ZONE,
         sub_type: OBJECT_SUBTYPE.GENERIC_ZONE,
         descrizione: desc || 'Root',
-        elements: []
+        elements: [],
       });
     }, rooms);
     if (data && data.desc) {
@@ -114,13 +171,13 @@ export class ComelitSbClient {
                 : OBJECT_SUBTYPE.DIGITAL_LIGHT,
             descrizione: desc,
             isProtected: `${data.protected[index]}`,
-            placeId: `${roomId}`
-          }
+            placeId: `${roomId}`,
+          },
         });
       });
     }
 
-    data = await this.fetchDeviceDesc("shutter");
+    data = await this.fetchDeviceDesc('shutter');
     if (data && data.desc) {
       data.desc.forEach((desc, index) => {
         const roomId = getZoneKey(data.env[index]);
@@ -135,83 +192,41 @@ export class ComelitSbClient {
             sub_type: OBJECT_SUBTYPE.ELECTRIC_BLIND,
             descrizione: desc,
             isProtected: `${data.protected[index]}`,
-            placeId: `${roomId}`
-          }
+            placeId: `${roomId}`,
+          },
         });
       });
     }
 
-    data = await this.fetchDeviceDesc("clima");
+    data = await this.fetchDeviceDesc('clima');
     if (data && data.desc) {
       data.desc.forEach((desc, index) => {
         const roomId = getZoneKey(data.env[index]);
         const room: DeviceData = rooms.get(roomId);
         const value = data.val[index] as any[];
-        const [thermo, dehumidifier] = value;
         const thermostatData: ThermostatDeviceData = {
           id: getClimaKey(index),
           objectId: `${index}`,
           status: data.status[index] === 1 ? STATUS_ON : STATUS_OFF,
           type: OBJECT_TYPE.THERMOSTAT,
-          sub_type: data.type[index] === 13 ? OBJECT_SUBTYPE.CLIMA_THERMOSTAT_DEHUMIDIFIER : OBJECT_SUBTYPE.CLIMA_DEHUMIDIFIER,
+          // FIXME: the assumption in next line is probably wrong
+          sub_type:
+            data.type[index] === 13
+              ? OBJECT_SUBTYPE.CLIMA_THERMOSTAT_DEHUMIDIFIER
+              : OBJECT_SUBTYPE.CLIMA_DEHUMIDIFIER,
           descrizione: desc,
           isProtected: `${data.protected[index]}`,
           placeId: `${roomId}`,
         };
-        if (thermo) {
-          const state = thermo[2]; // can be U, L, O
-          const mode = thermo[3]; // can be M, A
-
-          thermostatData.temperatura = thermo[0];
-          switch (mode) {
-            case 'M':
-              thermostatData.auto_man = state === 'O' ? ClimaMode.OFF_MANUAL : ClimaMode.MANUAL;
-              break;
-            case 'A':
-              thermostatData.auto_man = state === 'O' ? ClimaMode.OFF_AUTO : ClimaMode.AUTO;
-              break;
-          }
-          thermostatData.soglia_attiva = thermo[4];
-
-          if (mode === 'L') {
-            thermostatData.est_inv = ThermoSeason.SUMMER;
-          } else if (mode === 'U') {
-            thermostatData.est_inv = ThermoSeason.WINTER;
-          }
-        }
-
-        if (dehumidifier) {
-          thermostatData.umidita = dehumidifier[0];
-          const state = dehumidifier[2]; // can be U, L, O
-          const mode = dehumidifier[3]; // can be M, A
-
-          thermostatData.temperatura = dehumidifier[0];
-          switch (mode) {
-            case 'M':
-              thermostatData.auto_man_umi = state === 'O' ? ClimaMode.OFF_MANUAL : ClimaMode.MANUAL;
-              break;
-            case 'A':
-              thermostatData.auto_man_umi = state === 'O' ? ClimaMode.OFF_AUTO : ClimaMode.AUTO;
-              break;
-          }
-          thermostatData.soglia_attiva_umi = dehumidifier[4];
-
-          if (mode === 'L') {
-            thermostatData.est_inv = ThermoSeason.SUMMER;
-          } else if (mode === 'U') {
-            thermostatData.est_inv = ThermoSeason.WINTER;
-          }
-
-          thermostatData.soglia_attiva_umi = dehumidifier[4];
-        }
+        updateClima(value, thermostatData);
         room.elements.push({
           id: getClimaKey(index),
-          data: thermostatData
+          data: thermostatData,
         });
       });
     }
 
-    data = await this.fetchDeviceDesc("other");
+    data = await this.fetchDeviceDesc('other');
     if (data && data.desc) {
       data.desc.forEach((desc, index) => {
         const roomId = getZoneKey(data.env[index]);
@@ -226,8 +241,8 @@ export class ComelitSbClient {
             sub_type: OBJECT_SUBTYPE.CONSUMPTION,
             descrizione: desc,
             isProtected: `${data.protected[index]}`,
-            placeId: `${roomId}`
-          }
+            placeId: `${roomId}`,
+          },
         });
       });
     }
@@ -238,16 +253,16 @@ export class ComelitSbClient {
       status: STATUS_OFF,
       type: OBJECT_TYPE.ZONE,
       sub_type: OBJECT_SUBTYPE.GENERIC_ZONE,
-      descrizione: "root",
-      elements: [...rooms.values()].map(dd => ({ id: dd.id, data: dd }))
+      descrizione: 'root',
+      elements: [...rooms.values()].map(dd => ({ id: dd.id, data: dd })),
     });
   }
 
   private async fetchDeviceDesc(type: string): Promise<DeviceInfo> {
     const resp = await axios.get<DeviceInfo>(`${this.address}/user/icon_desc.json`, {
       params: {
-        type
-      }
+        type,
+      },
     });
     if (resp.status === 200) {
       return resp.data;
@@ -257,39 +272,68 @@ export class ComelitSbClient {
   }
 
   async updateHomeStatus(homeIndex: HomeIndex) {
-    let info = await this.fetchDevicesStatus("light");
+    let info = await this.fetchDevicesStatus('light');
     if (info.status === 200) {
       info.data.status.forEach((status, index) => {
         const id = getLightKey(index);
-        const lightDeviceData = homeIndex.lightsIndex.get(id);
-        if (lightDeviceData) {
-          lightDeviceData.status = status === ON ? STATUS_ON : STATUS_OFF;
+        const deviceData = homeIndex.lightsIndex.get(id);
+        if (deviceData) {
+          deviceData.status = status === ON ? STATUS_ON : STATUS_OFF;
+          this.updateSingleDevice(homeIndex, id, deviceData);
         }
       });
     }
-    info = await this.fetchDevicesStatus("shutter");
+    info = await this.fetchDevicesStatus('shutter');
     if (info.status === 200) {
       info.data.status.forEach((status, index) => {
         const id = getBlindKey(index);
-        const blindDeviceData = homeIndex.blindsIndex.get(id);
-        if (blindDeviceData) {
-          blindDeviceData.status = status === ON ? STATUS_ON : STATUS_OFF;
+        const deviceData = homeIndex.blindsIndex.get(id);
+        if (deviceData) {
+          deviceData.status = `${status}`;
+          this.updateSingleDevice(homeIndex, id, deviceData);
+        }
+      });
+    }
+    info = await this.fetchDevicesStatus('other');
+    if (info.status === 200) {
+      info.data.status.forEach((status, index) => {
+        const id = getOtherKey(index);
+        const deviceData = homeIndex.outletsIndex.get(id);
+        if (deviceData) {
+          deviceData.status = `${status}`;
+          this.updateSingleDevice(homeIndex, id, deviceData);
+        }
+      });
+    }
+    info = await this.fetchDevicesStatus('clima');
+    if (info.status === 200) {
+      info.data.status.forEach((status, index) => {
+        const id = getClimaKey(index);
+        const deviceData = homeIndex.thermostatsIndex.get(id);
+        if (deviceData) {
+          const value = info.data.val[index] as any[][];
+          deviceData.status = `${status}`;
+          updateClima(value, deviceData);
+          this.updateSingleDevice(homeIndex, id, deviceData);
         }
       });
     }
     return null;
   }
 
-  async toggleDeviceStatus(
-    index: number,
-    status: number,
-    type?: string
-  ): Promise<boolean> {
+  private updateSingleDevice(homeIndex: HomeIndex, id: string, deviceData: ThermostatDeviceData) {
+    const newData = homeIndex.updateObject(id, deviceData);
+    if (this.onUpdate && typeof this.onUpdate === 'function') {
+      this.onUpdate(id, newData);
+    }
+  }
+
+  async toggleDeviceStatus(index: number, status: number, type?: string): Promise<boolean> {
     const resp = await axios.get(`${this.address}/user/action.cgi`, {
       params: {
-        type: type || "light",
-        [`num${status}`]: index
-      }
+        type: type || 'light',
+        [`num${status}`]: index,
+      },
     });
     return resp.status === 200;
   }
@@ -300,7 +344,7 @@ export class ComelitSbClient {
         clima,
         thermo: 'set',
         val: temperature,
-      }
+      },
     });
     return resp.status === 200;
   }
@@ -322,7 +366,7 @@ export class ComelitSbClient {
       params: {
         clima,
         thermo,
-      }
+      },
     });
     return resp.status === 200;
   }
@@ -332,19 +376,26 @@ export class ComelitSbClient {
       params: {
         clima,
         thermo: season === ThermoSeason.WINTER ? 'upper' : 'lower',
-      }
+      },
+    });
+    return resp.status === 200;
+  }
+
+  async toggleThermostatDehumidifierStatus(clima: number, mode: ClimaOnOff): Promise<boolean> {
+    const resp = await axios.get(`${this.address}/user/action.cgi`, {
+      params: {
+        clima,
+        thermo: mode === ClimaOnOff.ON_THERMO ? 'on' : 'off',
+      },
     });
     return resp.status === 200;
   }
 
   private async fetchDevicesStatus(type: string) {
-    return await axios.get<DeviceStatus>(
-      `${this.address}/user/icon_status.json`,
-      {
-        params: {
-          type
-        }
-      }
-    );
+    return await axios.get<DeviceStatus>(`${this.address}/user/icon_status.json`, {
+      params: {
+        type,
+      },
+    });
   }
 }
