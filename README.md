@@ -114,3 +114,7 @@ To change the temperature for a specific thermostat, use the `--temp` parameter:
 
 The above command will set the temperature of thermostat 0 to 21.5 Celsius degrees.
 
+To change the season for a specific thermostat, use the `--season` parameter:
+
+`comelit-sb -h SERIAL_BRIDGE_IP -p PORT clima --toggle 0 --season [summer|winter]`
+
