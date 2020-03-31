@@ -10,7 +10,7 @@ import {
   STATUS_ON,
   ThermostatDeviceData,
 } from './types';
-import { ClimaMode, ClimaOnOff, ROOT_ID, ThermoSeason } from './comelit-client';
+import {ClimaMode, ClimaOnOff, ROOT_ID, ThermoSeason} from './comelit-client';
 
 export interface BridgeLoginInfo {
   domus: string;
@@ -80,9 +80,9 @@ function updateClima(value: any[][], thermostatData: ThermostatDeviceData) {
     }
     thermostatData.soglia_attiva = thermo[4];
 
-    if (mode === 'L') {
+    if (state === 'L') {
       thermostatData.est_inv = ThermoSeason.SUMMER;
-    } else if (mode === 'U') {
+    } else if (state === 'U') {
       thermostatData.est_inv = ThermoSeason.WINTER;
     }
   }
@@ -103,9 +103,9 @@ function updateClima(value: any[][], thermostatData: ThermostatDeviceData) {
     }
     thermostatData.soglia_attiva_umi = dehumidifier[4];
 
-    if (mode === 'L') {
+    if (state === 'L') {
       thermostatData.est_inv = ThermoSeason.SUMMER;
-    } else if (mode === 'U') {
+    } else if (state === 'U') {
       thermostatData.est_inv = ThermoSeason.WINTER;
     }
 
@@ -359,6 +359,9 @@ export class ComelitSbClient {
         case ClimaMode.MANUAL:
           thermo = 'man';
           break;
+        case ClimaMode.OFF_AUTO:
+        case ClimaMode.OFF_MANUAL:
+          return this.toggleThermostatDehumidifierStatus(clima, ClimaOnOff.OFF_THERMO);
       }
     }
 

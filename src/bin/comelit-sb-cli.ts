@@ -107,6 +107,8 @@ async function listClima() {
           isManual ? 'manual mode' : 'auto mode'
         }, ${clima.est_inv === ThermoSeason.WINTER ? 'winter' : 'summer'}, Temperature ${parseInt(
           clima.temperatura
+        ) / 10}°, Temperature threshold ${parseInt(
+          clima.soglia_attiva
         ) / 10}°, Humidity level ${parseInt(clima.umidita)}%)`
       )
     );
@@ -210,7 +212,6 @@ async function setThermostatTemperature(index: number, temperature: string) {
 async function run() {
   const command = options._[0];
   console.log(chalk.green(`Executing command ${command} - ${JSON.stringify(options)}`));
-  console.debug(chalk.green(`${options.toggle}, ${typeof options.toggle}`));
   client = new ComelitSbClient(options.host, options.port);
   await client.login();
   try {
