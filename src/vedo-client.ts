@@ -1,5 +1,5 @@
-import http, { IncomingMessage, RequestOptions } from 'http';
 import { doGet, sleep } from './utils';
+import axios from "axios";
 
 export interface LoginInfo {
   rt_stat: number;
@@ -21,6 +21,7 @@ export interface AlarmArea {
   ready: boolean;
   armed: boolean;
   triggered: boolean;
+  sabotaged: boolean;
 }
 
 export interface AreaStatus extends LoginInfo {
@@ -37,87 +38,70 @@ export interface AreaStatus extends LoginInfo {
 
 const MAX_LOGIN_RETRY = 15;
 
+interface ClientConfig {
+  login?: string;
+  login_info?: string;
+  area_desc?: string;
+  area_stat?: string;
+  zone_desc?: string;
+  zone_stat?: string;
+  action?: string;
+  code_param?: string;
+}
+
+const DEFAULT_URL_CONFIG: ClientConfig = {
+  login: '/login.cgi',
+  login_info: '/login.json',
+  area_desc: '/user/area_desc.json',
+  area_stat: '/user/area_stat.json',
+  zone_desc: '/user/zone_desc.json',
+  zone_stat: '/user/zone_stat.json',
+  action: '/action.cgi',
+  code_param: 'code',
+};
+
 export class VedoClient {
   private readonly address: string;
+  private readonly config: ClientConfig;
 
-  constructor(address: string) {
-    this.address = address;
+  constructor(address: string, port: number = 80, config: ClientConfig = {}) {
+    this.address = address.startsWith('http://') ? address : `http://${address}`;
+    if (port && port !== 80) {
+      this.address = `${this.address}:${port}`;
+    }
+    this.config = { ...DEFAULT_URL_CONFIG, ...config };
   }
 
   private async login(code: string): Promise<string> {
-    const data = `code=${code}`;
+    const data = `${this.config.code_param}=${code}`;
+    const resp = await axios.post<string>(
+      `${this.address}${this.config.login}`,
+      data
+    );
+    if (resp.status >= 200 && resp.status < 300 && resp.headers['set-cookie']) {
+      return resp.headers['set-cookie'][0];
+    }
 
-    const options: RequestOptions = {
-      protocol: 'http:',
-      host: this.address,
-      path: '/login.cgi',
-      method: 'POST',
-      family: 4,
-      headers: {
-        'Content-Length': data.length,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    };
-
-    return new Promise<string>((resolve, reject) => {
-      const req = http.request(options, (res: IncomingMessage) => {
-        let result = '';
-        res.on('data', (chunk: string) => (result += chunk));
-        res.on('end', () => {
-          if (res.statusCode === 200) {
-            const header = res.headers['set-cookie'];
-            if (header) {
-              const uid = header[0].split('=')[1];
-              resolve(uid);
-            } else {
-              console.log('No cookie, retrying...');
-              reject(new Error('No cookie in header'));
-            }
-          } else {
-            reject(`Unknown error: ${res.statusCode}`);
-          }
-        });
-        res.on('error', err => reject(err));
-      });
-      req.on('error', (error: Error) => reject(error));
-      req.write(data);
-      req.end();
-    });
+    throw new Error('No cookie in header');
   }
 
   async logout(uid: string) {
     const data = `logout=1`;
 
-    const options: RequestOptions = {
-      protocol: 'http:',
-      host: this.address,
-      path: '/login.cgi',
-      method: 'POST',
-      family: 4,
-      headers: {
-        Cookie: `uid=${uid}`,
-        'Content-Length': data.length,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    };
+    const resp = await axios.post<string>(
+      `${this.address}${this.config.login}`,
+      data,
+      {
+        headers: {
+          Cookie: uid,
+        }
+      }
+    );
+    if (resp.status >= 200 && resp.status < 300) {
+      return true;
+    }
 
-    return new Promise<boolean>((resolve, reject) => {
-      const req = http.request(options, (res: IncomingMessage) => {
-        let result = '';
-        res.on('data', (chunk: string) => (result += chunk));
-        res.on('end', () => {
-          if (res.statusCode === 200) {
-            resolve(true);
-          } else {
-            reject(`Unknown error: ${res.statusCode}`);
-          }
-        });
-        res.on('error', err => reject(err));
-      });
-      req.on('error', (error: Error) => reject(error));
-      req.write(data);
-      req.end();
-    });
+    throw new Error('Cannot logout');
   }
 
   async loginWithRetry(code: string): Promise<string> {
@@ -129,7 +113,7 @@ export class VedoClient {
         if (!uid) {
           uid = await this.login(code);
         }
-        console.log('trying login with uid ' + uid);
+        console.debug('trying login with cookie ' + uid);
         logged = await this.isLogged(uid);
       } catch (e) {
         console.error(e.message);
@@ -156,26 +140,26 @@ export class VedoClient {
     try {
       const loginInfo: LoginInfo = await doGet<LoginInfo>(
         this.address,
-        '/login.json',
+        this.config.login_info,
         uid
       );
       return loginInfo.logged === 1;
     } catch (e) {
-      console.error(e);
+      console.error(e.message);
       return false;
     }
   }
 
   async areaDesc(uid: string): Promise<AreaDesc> {
-    return await doGet<AreaDesc>(this.address, '/user/area_desc.json', uid);
+    return await doGet<AreaDesc>(this.address, this.config.area_desc, uid);
   }
 
   async areaStatus(uid: string): Promise<AreaStatus> {
-    return doGet<AreaStatus>(this.address, '/user/area_stat.json', uid);
+    return doGet<AreaStatus>(this.address, this.config.area_stat, uid);
   }
 
   async zoneDesc(uid: string): Promise<any> {
-    return doGet(this.address, '/user/zone_desc.json', uid);
+    return doGet(this.address, this.config.zone_desc, uid);
   }
 
   async zoneStatus(uid: string): Promise<any> {
@@ -218,8 +202,8 @@ export class VedoClient {
       },
     ];
 
-    const zones = await doGet(this.address, '/user/zone_desc.json', uid);
-    const status = await doGet(this.address, '/user/zone_stat.json', uid);
+    const zones = await doGet(this.address, this.config.zone_desc, uid);
+    const status = await doGet(this.address, this.config.zone_stat, uid);
     const statuses = status.status.split(',');
     return statuses
       .map((status, index) => {
@@ -246,6 +230,7 @@ export class VedoClient {
             armed: areaStat.armed[index] !== 0,
             ready: areaStat.ready[index] === 0,
             triggered: areaStat.alarm[index] !== 0,
+            sabotaged: areaStat.sabotage[index] !== 0,
           };
         }
         return null;
@@ -254,19 +239,43 @@ export class VedoClient {
   }
 
   async arm(uid: string, area: number) {
-    return doGet(
-      this.address,
-      `/action.cgi?force=1&vedo=1&tot=${area}&_=${new Date().getTime()}`,
-      uid
-    );
+    const resp = await axios.get<any>(`${this.address}${this.config.action}`, {
+      params: {
+        force: '1',
+        vedo: '1',
+        tot: area,
+        _: new Date().getTime(),
+      },
+      headers: {
+        Cookie: uid,
+        'X-Requested-With': 'XMLHttpRequest',
+        Accept: '*/*',
+      }
+    });
+    if (resp.status === 200) {
+      return resp.data;
+    }
+    throw new Error(`Unable to arm alarm: ${resp.statusText}`);
   }
 
   async disarm(uid: string, area: number) {
-    return doGet(
-      this.address,
-      `/action.cgi?force=1&vedo=1&dis=${area}&_=${new Date().getTime()}`,
-      uid
-    );
+    const resp = await axios.get<any>(`${this.address}${this.config.action}`, {
+      params: {
+        force: '1',
+        vedo: '1',
+        dis: area,
+        _: new Date().getTime(),
+      },
+      headers: {
+        Cookie: uid,
+        'X-Requested-With': 'XMLHttpRequest',
+        Accept: '*/*',
+      }
+    });
+    if (resp.status === 200) {
+      return resp.data;
+    }
+    throw new Error(`Unable to disarm alarm: ${resp.statusText}`);
   }
 
   async shutdown(uid: string) {

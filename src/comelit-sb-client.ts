@@ -272,53 +272,61 @@ export class ComelitSbClient {
   }
 
   async updateHomeStatus(homeIndex: HomeIndex) {
-    let info = await this.fetchDevicesStatus('light');
-    if (info.status === 200) {
-      info.data.status.forEach((status, index) => {
-        const id = getLightKey(index);
-        const deviceData = homeIndex.lightsIndex.get(id);
-        if (deviceData) {
-          deviceData.status = status === ON ? STATUS_ON : STATUS_OFF;
-          this.updateSingleDevice(homeIndex, id, deviceData);
-        }
-      });
+    if (homeIndex.lightsIndex.size > 0) {
+      const info = await this.fetchDevicesStatus('light');
+      if (info.status === 200) {
+        info.data.status.forEach((status, index) => {
+          const id = getLightKey(index);
+          const deviceData = homeIndex.lightsIndex.get(id);
+          if (deviceData) {
+            deviceData.status = status === ON ? STATUS_ON : STATUS_OFF;
+            this.updateSingleDevice(homeIndex, id, deviceData);
+          }
+        });
+      }
     }
-    info = await this.fetchDevicesStatus('shutter');
-    if (info.status === 200) {
-      info.data.status.forEach((status, index) => {
-        const id = getBlindKey(index);
-        const deviceData = homeIndex.blindsIndex.get(id);
-        if (deviceData) {
-          deviceData.status = `${status}`;
-          this.updateSingleDevice(homeIndex, id, deviceData);
-        }
-      });
+    if (homeIndex.blindsIndex.size > 0) {
+      const info = await this.fetchDevicesStatus('shutter');
+      if (info.status === 200) {
+        info.data.status.forEach((status, index) => {
+          const id = getBlindKey(index);
+          const deviceData = homeIndex.blindsIndex.get(id);
+          if (deviceData) {
+            deviceData.status = `${status}`;
+            this.updateSingleDevice(homeIndex, id, deviceData);
+          }
+        });
+      }
     }
-    info = await this.fetchDevicesStatus('other');
-    if (info.status === 200) {
-      info.data.status.forEach((status, index) => {
-        const id = getOtherKey(index);
-        const deviceData = homeIndex.outletsIndex.get(id);
-        if (deviceData) {
-          deviceData.status = `${status}`;
-          this.updateSingleDevice(homeIndex, id, deviceData);
-        }
-      });
+    if (homeIndex.outletsIndex.size > 0) {
+      const info = await this.fetchDevicesStatus('other');
+      if (info.status === 200) {
+        info.data.status.forEach((status, index) => {
+          const id = getOtherKey(index);
+          const deviceData = homeIndex.outletsIndex.get(id);
+          if (deviceData) {
+            deviceData.status = `${status}`;
+            this.updateSingleDevice(homeIndex, id, deviceData);
+          }
+        });
+      }
     }
-    info = await this.fetchDevicesStatus('clima');
-    if (info.status === 200) {
-      info.data.status.forEach((status, index) => {
-        const id = getClimaKey(index);
-        const deviceData = homeIndex.thermostatsIndex.get(id);
-        if (deviceData) {
-          const value = info.data.val[index] as any[][];
-          deviceData.status = `${status}`;
-          updateClima(value, deviceData);
-          this.updateSingleDevice(homeIndex, id, deviceData);
-        }
-      });
+    if (homeIndex.thermostatsIndex.size > 0) {
+      const info = await this.fetchDevicesStatus('clima');
+      if (info.status === 200) {
+        info.data.status.forEach((status, index) => {
+          const id = getClimaKey(index);
+          const deviceData = homeIndex.thermostatsIndex.get(id);
+          if (deviceData) {
+            const value = info.data.val[index] as any[][];
+            deviceData.status = `${status}`;
+            updateClima(value, deviceData);
+            this.updateSingleDevice(homeIndex, id, deviceData);
+          }
+        });
+      }
     }
-    return null;
+    return homeIndex;
   }
 
   private updateSingleDevice(homeIndex: HomeIndex, id: string, deviceData: ThermostatDeviceData) {

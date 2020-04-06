@@ -18,7 +18,7 @@ describe('vedo client', () => {
 
     const client = new VedoClient('localhost');
     const uid = await client.loginWithRetry('12345678');
-    expect(uid).toBe('B7FE1B2544A473F4');
+    expect(uid).toBe('uid=B7FE1B2544A473F4');
   });
 
   it('should retrive active areas', async () => {
@@ -54,11 +54,34 @@ describe('vedo client', () => {
       });
 
     const client = new VedoClient('localhost');
-    const areas = await client.findActiveAreas('B7FE1B2544A473F4');
+    const areas = await client.findActiveAreas('uid=B7FE1B2544A473F4');
     expect(areas.length).toBe(1);
     expect(areas[0].description).toBe('RADAR');
     expect(areas[0].ready).toBe(true);
     expect(areas[0].triggered).toBe(false);
     expect(areas[0].armed).toBe(false);
+  });
+
+  it('should extract the cookie from the header when logging in with a different config', async () => {
+    nock('http://localhost')
+      .post('/user/login.cgi', 'alm=12345678')
+      .reply(200, {}, { 'Set-Cookie': 'sid=B7FE1B2544A473F4' });
+
+    nock('http://localhost')
+      .get('/user/login.json')
+      .reply(200, {
+        life: 0,
+        logged: 1,
+        rt_stat: 0,
+        permission: [false, false],
+      });
+
+    const client = new VedoClient('localhost', null, {
+      login: '/user/login.cgi',
+      code_param: 'alm',
+      login_info: '/user/login.json',
+    });
+    const uid = await client.loginWithRetry('12345678');
+    expect(uid).toBe('sid=B7FE1B2544A473F4');
   });
 });

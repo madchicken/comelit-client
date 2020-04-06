@@ -1,6 +1,5 @@
 import crypto, { BinaryLike } from 'crypto';
-import http, { IncomingMessage, RequestOptions } from 'http';
-import { stringify } from 'querystring';
+import axios from "axios";
 
 export function generateUUID(data: BinaryLike) {
   const sha1sum = crypto.createHash('sha1');
@@ -22,52 +21,26 @@ export function generateUUID(data: BinaryLike) {
   );
 }
 
-export function doGet<T = any>(
+export async function doGet<T = any>(
   address: string,
   path: string,
   uid: string,
   params: any = null
 ): Promise<T> {
-  const qs = params ? '?' + stringify(params) : '';
-  const options: RequestOptions = {
-    protocol: 'http:',
-    host: `${address}`,
-    method: 'GET',
-    family: 4,
-    path: `${path}${qs}`,
+  console.log(`GET to ${address}${path}`);
+  const resp = await axios.get<any>(`${address}${path}`, {
+    params,
     headers: {
-      Cookie: `uid=${uid}`,
-      Referer: `http://${address}/user/index.htm`,
+      Cookie: uid,
       'X-Requested-With': 'XMLHttpRequest',
       Accept: '*/*',
-    },
-  };
-
-  return new Promise<T>((resolve, reject) => {
-    console.log(`Executing GET ${options.protocol}//${options.host}${path}`);
-    const req = http.request(options, (res: IncomingMessage) => {
-      let result = '';
-      res.on('data', (chunk: string) => (result += chunk));
-      res.on('end', () => {
-        if (res.statusCode >= 200 && res.statusCode < 400) {
-          if (result) {
-            resolve(JSON.parse(result) as T);
-          } else {
-            resolve();
-          }
-        } else {
-          reject(
-            new Error(
-              `Unknown error on GET ${options.host}${options.path}: ${res.statusCode}`
-            )
-          );
-        }
-      });
-      res.on('error', (err: Error) => reject(err));
-    });
-    req.on('error', (error: Error) => reject(error));
-    req.end();
+    }
   });
+  if (resp.status >= 200 && resp.status < 300) {
+    return resp.data;
+  }
+  console.log(resp);
+  throw new Error(`Unable to GET data: ${resp.statusText}`);
 }
 
 export async function sleep(time) {

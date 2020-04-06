@@ -13,6 +13,41 @@ The package contains three different tools:
 
 ## Vedo Alarm CLI
 
+This is the CLI to interact with VEDO alarm. Vedo has is own WEB UI that could be different from the serial bridge one.
+This is why is a separate tool.
+
+### Basic usage
+When using the tool, you always have to pass the host and the port of the VEDO UI. Port is not mandatory,
+the default is 80.
+
+To get the description of configured areas, use the `area` along with `--desc` option:
+
+`vedo -h VEDO_IP -p PORT area --desc`
+
+To get the status of all areas, use the `area` along with `--status` option:
+
+`vedo -h VEDO_IP -p PORT area --status`
+
+To get the active areas, use `--active` parameter:
+
+`vedo -h VEDO_IP -p PORT area --active`
+
+To arm the system, use `--arm` parameter followed by the are number (32 means all the system):
+
+`vedo -h VEDO_IP -p PORT area --arm 32`
+
+To disarm the system, use `--disarm` parameter followed by the are number (32 means all the system):
+
+`vedo -h VEDO_IP -p PORT area --disarm 32`
+
+To get the description of configured zones, use the `zone` along with `--desc` option:
+
+`vedo -h VEDO_IP -p PORT zone --desc`
+
+To get the status of area use the `area` along with `--status` option:
+
+`vedo -h VEDO_IP -p PORT zone --status`
+
 ## Comelit Serial Bridge
 
 This is a CLI to interact with the old serial bridge. This model uses polling to update status on external systems.
