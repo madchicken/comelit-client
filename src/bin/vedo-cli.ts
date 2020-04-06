@@ -12,6 +12,7 @@ const options: ClientOptions & any = yargs
   .scriptName('vedo-cli')
   .option('host', { alias: 'h', type: 'string', demandOption: true })
   .option('code', { alias: 'c', type: 'string', demandOption: true })
+  .option('port', { alias: 'p', type: 'number', demandOption: false })
   .command('area', 'Get info about active areas', {
     desc: {
       describe: 'Get info about areas status',
@@ -49,7 +50,7 @@ async function run() {
   console.log(
     chalk.green(`Executing command ${command} - ${JSON.stringify(options)}`)
   );
-  client = new VedoClient(options.host);
+  client = new VedoClient(options.host, options.port || 80);
   const uid = await client.loginWithRetry(options.code);
   try {
     switch (command) {
@@ -86,7 +87,7 @@ async function run() {
     await client.shutdown(uid);
     console.log(chalk.green(`Command ${command} executed successfully`));
   } catch (e) {
-    console.error(e);
+    console.error(e.message);
     await client.shutdown(uid);
   }
 }

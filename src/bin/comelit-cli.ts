@@ -185,6 +185,24 @@ const options: ClientOptions & any = yargs
       choices: ['winter', 'summer'],
     },
   })
+  .command('umi', 'Get the list of all dehumidifiers in the house', {
+    host: {
+      alias: 'h',
+      description: 'broker host or IP',
+      type: 'string',
+      demandOption: true,
+    },
+    toggle: {
+      alias: 't',
+      describe: 'Turn on/off a dehumidifier',
+      type: 'number',
+    },
+    percentage: {
+      alias: 'perc',
+      describe: 'Set the threshold humidity for a dehumidifier',
+      type: 'number',
+    },
+  })
   .command(
     'listen',
     'Optionally Subscribe to an object and listen on the read topic (CTRL+C to exit)',
@@ -282,7 +300,7 @@ async function run() {
           break;
         case 'umi':
           if (options.toggle !== undefined) {
-            if (options.temp !== undefined) {
+            if (options.perc !== undefined) {
               await setHumidifierTemperature(options.toggle, options.temp);
             } else {
               await switchHumidifierState(options.toggle);
