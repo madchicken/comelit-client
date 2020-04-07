@@ -38,18 +38,18 @@ export interface AreaStatus extends LoginInfo {
 
 const MAX_LOGIN_RETRY = 15;
 
-interface ClientConfig {
-  login?: string;
-  login_info?: string;
-  area_desc?: string;
-  area_stat?: string;
-  zone_desc?: string;
-  zone_stat?: string;
-  action?: string;
-  code_param?: string;
+export interface VedoClientConfig {
+  login: string;
+  login_info: string;
+  area_desc: string;
+  area_stat: string;
+  zone_desc: string;
+  zone_stat: string;
+  action: string;
+  code_param: string;
 }
 
-const DEFAULT_URL_CONFIG: ClientConfig = {
+const DEFAULT_URL_CONFIG: VedoClientConfig = {
   login: '/login.cgi',
   login_info: '/login.json',
   area_desc: '/user/area_desc.json',
@@ -62,9 +62,9 @@ const DEFAULT_URL_CONFIG: ClientConfig = {
 
 export class VedoClient {
   private readonly address: string;
-  private readonly config: ClientConfig;
+  private readonly config: VedoClientConfig;
 
-  constructor(address: string, port: number = 80, config: ClientConfig = {}) {
+  constructor(address: string, port: number = 80, config: Partial<VedoClientConfig> = {}) {
     this.address = address.startsWith('http://') ? address : `http://${address}`;
     if (port && port !== 80) {
       this.address = `${this.address}:${port}`;

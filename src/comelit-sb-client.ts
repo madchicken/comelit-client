@@ -279,8 +279,11 @@ export class ComelitSbClient {
           const id = getLightKey(index);
           const deviceData = homeIndex.lightsIndex.get(id);
           if (deviceData) {
-            deviceData.status = status === ON ? STATUS_ON : STATUS_OFF;
-            this.updateSingleDevice(homeIndex, id, deviceData);
+            const updatedStatus = status === ON ? STATUS_ON : STATUS_OFF;
+            if (updatedStatus !== deviceData.status) {
+              deviceData.status = updatedStatus;
+              this.updateSingleDevice(homeIndex, id, deviceData);
+            }
           }
         });
       }
@@ -292,8 +295,11 @@ export class ComelitSbClient {
           const id = getBlindKey(index);
           const deviceData = homeIndex.blindsIndex.get(id);
           if (deviceData) {
-            deviceData.status = `${status}`;
-            this.updateSingleDevice(homeIndex, id, deviceData);
+            const updatedStatus = `${status}`; // can be 0, 1 or 2
+            if (updatedStatus !== deviceData.status) {
+              deviceData.status = updatedStatus;
+              this.updateSingleDevice(homeIndex, id, deviceData);
+            }
           }
         });
       }
@@ -305,8 +311,11 @@ export class ComelitSbClient {
           const id = getOtherKey(index);
           const deviceData = homeIndex.outletsIndex.get(id);
           if (deviceData) {
-            deviceData.status = `${status}`;
-            this.updateSingleDevice(homeIndex, id, deviceData);
+            const updatedStatus = status === ON ? STATUS_ON : STATUS_OFF;
+            if (updatedStatus !== deviceData.status) {
+              deviceData.status = updatedStatus;
+              this.updateSingleDevice(homeIndex, id, deviceData);
+            }
           }
         });
       }
