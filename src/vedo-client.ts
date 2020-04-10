@@ -36,6 +36,21 @@ export interface AreaStatus extends LoginInfo {
   out_time: number[];
 }
 
+export interface ZoneDesc extends LoginInfo {
+  present: string;
+  in_area: number[];
+  description: string[];
+}
+
+export interface ZoneStatus {
+  description: string;
+  open: boolean;
+  excluded: boolean;
+  isolated: boolean;
+  sabotated: boolean;
+  alarm: boolean;
+  inhibited: boolean;
+}
 const MAX_LOGIN_RETRY = 15;
 
 export interface VedoClientConfig {
@@ -158,11 +173,11 @@ export class VedoClient {
     return doGet<AreaStatus>(this.address, this.config.area_stat, uid);
   }
 
-  async zoneDesc(uid: string): Promise<any> {
+  async zoneDesc(uid: string): Promise<ZoneDesc> {
     return doGet(this.address, this.config.zone_desc, uid);
   }
 
-  async zoneStatus(uid: string): Promise<any> {
+  async zoneStatus(uid: string): Promise<ZoneStatus[]> {
     const page_list = [
       {
         hash: 'open',
