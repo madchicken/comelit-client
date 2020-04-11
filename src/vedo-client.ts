@@ -42,6 +42,10 @@ export interface ZoneDesc extends LoginInfo {
   description: string[];
 }
 
+export interface ZoneStat extends LoginInfo {
+  status: string;
+}
+
 export interface ZoneStatus {
   description: string;
   open: boolean;
@@ -217,20 +221,22 @@ export class VedoClient {
       },
     ];
 
-    const zones = await doGet(this.address, this.config.zone_desc, uid);
-    const status = await doGet(this.address, this.config.zone_stat, uid);
-    const statuses = status.status.split(',');
-    return statuses
-      .map((status, index) => {
+    const zoneDesc = await doGet<ZoneDesc>(this.address, this.config.zone_desc, uid);
+    const zoneStatus = await doGet<ZoneStat>(this.address, this.config.zone_stat, uid);
+    const statuses = zoneStatus.status.split(',');
+    return zoneDesc.in_area.reduce((activeZones, present, index) => {
+      if (present === 1) {
         const stat = {
-          description: zones.description[index],
+          description: zoneDesc.description[index],
         };
+        const status = statuses[index];
         page_list.forEach(
           o => (stat[o.hash] = (parseInt(status) & o.bit_mask) !== 0)
         );
-        return stat;
-      })
-      .filter(zone => !zone.excluded);
+        activeZones.push(stat);
+      }
+      return activeZones;
+    }, []).filter(zone => !zone.excluded);
   }
 
   async findActiveAreas(uid: string): Promise<AlarmArea[]> {
