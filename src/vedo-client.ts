@@ -162,7 +162,7 @@ export class VedoClient {
         this.config.login_info,
         uid
       );
-      return loginInfo.logged === 1;
+      return loginInfo.logged === 1 && loginInfo.rt_stat === 9;
     } catch (e) {
       console.error(e.message);
       return false;
