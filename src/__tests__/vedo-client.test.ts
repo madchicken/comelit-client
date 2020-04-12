@@ -12,7 +12,7 @@ describe('vedo client', () => {
       .reply(200, {
         life: 0,
         logged: 1,
-        rt_stat: 0,
+        rt_stat: 9,
         permission: [false, false],
       });
 
@@ -72,7 +72,7 @@ describe('vedo client', () => {
       .reply(200, {
         life: 0,
         logged: 1,
-        rt_stat: 0,
+        rt_stat: 9,
         permission: [false, false],
       });
 
