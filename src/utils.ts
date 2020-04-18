@@ -27,7 +27,6 @@ export async function doGet<T = any>(
   uid: string,
   params: any = null
 ): Promise<T> {
-  console.log(`GET to ${address}${path}`);
   const resp = await axios.get<any>(`${address}${path}`, {
     params,
     headers: {
@@ -39,7 +38,6 @@ export async function doGet<T = any>(
   if (resp.status >= 200 && resp.status < 300) {
     return resp.data;
   }
-  console.log(resp);
   throw new Error(`Unable to GET data: ${resp.statusText}`);
 }
 

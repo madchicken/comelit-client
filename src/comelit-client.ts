@@ -3,7 +3,7 @@ import { DeferredMessage, PromiseBasedQueue } from './promise-queue';
 import { generateUUID } from './utils';
 import dgram, { RemoteInfo } from 'dgram';
 import { AddressInfo } from 'net';
-import { DeviceData, HomeIndex } from './types';
+import {ConsoleLike, DeviceData, HomeIndex} from './types';
 import Timeout = NodeJS.Timeout;
 
 export const ROOT_ID = 'GEN#17#13#1';
@@ -153,11 +153,11 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
   private readTopic: string;
   private clientId: string;
   private readonly onUpdate: (objId: string, device: DeviceData) => void;
-  private readonly log: (message?: any, ...optionalParams: any[]) => void;
+  private readonly logger: ConsoleLike;
 
   constructor(
     onUpdate?: (objId: string, device: DeviceData) => void,
-    log?: (message?: any, ...optionalParams: any[]) => void
+    log?: ConsoleLike
   ) {
     super();
     this.props = {
@@ -165,7 +165,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
       index: 1,
     };
     this.onUpdate = onUpdate;
-    this.log = log || console.log;
+    this.logger = log || console;
   }
 
   processResponse(
@@ -192,7 +192,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
         const datum: DeviceData = response.out_data[0];
         const value = this.homeIndex.updateObject(response.obj_id, datum);
         if (this.onUpdate && value) {
-          this.log(`Updating ${response.obj_id} with data ${JSON.stringify(datum)}`);
+          this.logger.info(`Updating ${response.obj_id} with data ${JSON.stringify(datum)}`);
           this.onUpdate(response.obj_id, value);
         }
       }
@@ -229,11 +229,11 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
 
       server.on('listening', () => {
         const address: AddressInfo = server.address() as AddressInfo;
-        this.log(`server listening ${address.address}:${address.port}`);
+        this.logger.info(`server listening ${address.address}:${address.port}`);
       });
 
       server.on('error', err => {
-        this.log(`server error:\n${err.stack}`);
+        this.logger.info(`server error:\n${err.stack}`);
         clearInterval(timeout);
         server.close();
         resolve();
@@ -277,7 +277,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
               model = 'Home server';
               break;
           }
-          this.log(
+          this.logger.info(
             `Found hardware ${hwID} MAC ${macAddress}, app ${appID} version ${appVersion}, system id ${systemID}, ${model} - ${description} at IP ${rinfo.address}`
           );
         }
@@ -299,7 +299,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     this.clientId = this.getOrCreateClientId(clientId);
     this.readTopic = `${CLIENT_ID_PREFIX}/${HUB_ID}/tx/${this.clientId}`;
     this.writeTopic = `${CLIENT_ID_PREFIX}/${HUB_ID}/rx/${this.clientId}`;
-    this.log(`Connecting to Comelit HUB at ${broker} with clientID ${this.clientId}`);
+    this.logger.info(`Connecting to Comelit HUB at ${broker} with clientID ${this.clientId}`);
     this.props.client = await connectAsync(broker, {
       username: hub_username || 'hsrv-user',
       password: hub_password || 'sf1nE9bjPc',
@@ -310,7 +310,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     await this.subscribeTopic(this.readTopic, this.handleIncomingMessage.bind(this));
     this.setTimeout(DEFAULT_TIMEOUT);
     this.props.agent_id = await this.retriveAgentId();
-    this.log(`...done: client agent id is ${this.props.agent_id}`);
+    this.logger.info(`...done: client agent id is ${this.props.agent_id}`);
     return this.props.client;
   }
 
@@ -333,23 +333,23 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     if (this.props.client && this.props.client.connected) {
       try {
         this.flush(true);
-        this.log('Comelit client unsubscribe from read topic');
+        this.logger.info('Comelit client unsubscribe from read topic');
         await this.props.client.unsubscribe(this.readTopic);
-        this.log('Comelit client ending session');
+        this.logger.info('Comelit client ending session');
         await this.props.client.end(true);
       } catch (e) {
-        this.log(e.message);
+        this.logger.info(e.message);
       }
     }
     this.props.client = null;
     this.props.index = 0;
     this.props.sessiontoken = null;
     this.props.agent_id = null;
-    this.log('Comelit client disconnected');
+    this.logger.info('Comelit client disconnected');
   }
 
   private async retriveAgentId(): Promise<number> {
-    this.log('Retrieving agent id...');
+    this.logger.info('Retrieving agent id...');
     const packet: MqttMessage = {
       req_type: REQUEST_TYPE.ANNOUNCE,
       seq_id: this.props.index++,
@@ -359,7 +359,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     const msg = await this.publish(packet);
     const agentId = msg.out_data[0].agent_id;
     const descrizione = msg.out_data[0].descrizione;
-    this.log(`Logged into Comelit hub: ${descrizione}`);
+    this.logger.info(`Logged into Comelit hub: ${descrizione}`);
     return agentId;
   }
 
@@ -510,7 +510,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
   }
 
   private async publish(packet: MqttMessage): Promise<MqttIncomingMessage> {
-    this.log(`Sending message to HUB ${JSON.stringify(packet)}`);
+    this.logger.info(`Sending message to HUB ${JSON.stringify(packet)}`);
     try {
       await this.props.client.publish(this.writeTopic, JSON.stringify(packet));
       return await this.enqueue(packet);

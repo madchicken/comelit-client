@@ -1,5 +1,6 @@
 import axios from 'axios';
 import {
+  ConsoleLike,
   DeviceData,
   DeviceIndex,
   HomeIndex,
@@ -116,19 +117,19 @@ function updateClima(value: any[][], thermostatData: ThermostatDeviceData) {
 export class ComelitSbClient {
   private readonly address: string;
   private readonly onUpdate: (objId: string, device: DeviceData) => void;
-  private readonly log: (message?: any, ...optionalParams: any[]) => void;
+  private readonly log: ConsoleLike;
 
   constructor(
     address: string,
     port: number = 80,
     onUpdate?: (objId: string, device: DeviceData) => void,
-    log?: (message?: any, ...optionalParams: any[]) => void
+    log?: ConsoleLike
   ) {
     this.address = address.startsWith('http://')
       ? `${address}:${port}`
       : `http://${address}:${port}`;
     this.onUpdate = onUpdate;
-    this.log = log || console.log;
+    this.log = log || console;
   }
 
   async login(): Promise<boolean> {
@@ -378,7 +379,7 @@ export class ComelitSbClient {
           break;
         case ClimaMode.OFF_AUTO:
         case ClimaMode.OFF_MANUAL:
-          return this.toggleThermostatDehumidifierStatus(clima, ClimaOnOff.OFF_THERMO);
+          return this.toggleDehumidifierStatus(clima, ClimaOnOff.OFF_THERMO);
       }
     }
 
@@ -401,10 +402,46 @@ export class ComelitSbClient {
     return resp.status === 200;
   }
 
-  async toggleThermostatDehumidifierStatus(clima: number, mode: ClimaOnOff): Promise<boolean> {
+  async setHumidity(humi: number, humidity: number): Promise<boolean> {
     const resp = await axios.get(`${this.address}/user/action.cgi`, {
       params: {
-        clima,
+        humi,
+        thermo: 'set',
+        val: humidity,
+      },
+    });
+    return resp.status === 200;
+  }
+
+  async switchDehumidifierMode(humi: number, mode: ClimaMode): Promise<boolean> {
+    let thermo = null;
+    if (mode) {
+      switch (mode) {
+        case ClimaMode.AUTO:
+          thermo = 'auto';
+          break;
+        case ClimaMode.MANUAL:
+          thermo = 'man';
+          break;
+        case ClimaMode.OFF_AUTO:
+        case ClimaMode.OFF_MANUAL:
+          return this.toggleDehumidifierStatus(humi, ClimaOnOff.OFF_THERMO);
+      }
+    }
+
+    const resp = await axios.get(`${this.address}/user/action.cgi`, {
+      params: {
+        humi,
+        thermo,
+      },
+    });
+    return resp.status === 200;
+  }
+
+  async toggleDehumidifierStatus(humi: number, mode: ClimaOnOff): Promise<boolean> {
+    const resp = await axios.get(`${this.address}/user/action.cgi`, {
+      params: {
+        humi,
         thermo: mode === ClimaOnOff.ON_THERMO ? 'on' : 'off',
       },
     });

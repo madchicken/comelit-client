@@ -1,5 +1,6 @@
-import { doGet, sleep } from './utils';
+import {doGet, sleep} from './utils';
 import axios from "axios";
+import {ConsoleLike} from "./types";
 
 export interface LoginInfo {
   rt_stat: number;
@@ -82,6 +83,7 @@ const DEFAULT_URL_CONFIG: VedoClientConfig = {
 export class VedoClient {
   private readonly address: string;
   private readonly config: VedoClientConfig;
+  private logger: ConsoleLike;
 
   constructor(address: string, port: number = 80, config: Partial<VedoClientConfig> = {}) {
     this.address = address.startsWith('http://') ? address : `http://${address}`;
@@ -89,6 +91,11 @@ export class VedoClient {
       this.address = `${this.address}:${port}`;
     }
     this.config = { ...DEFAULT_URL_CONFIG, ...config };
+    this.logger = console;
+  }
+
+  setLogger(logger: ConsoleLike) {
+    this.logger = logger;
   }
 
   private async login(code: string): Promise<string> {
@@ -132,21 +139,21 @@ export class VedoClient {
         if (!uid) {
           uid = await this.login(code);
         }
-        console.debug('trying login with cookie ' + uid);
+        this.logger.debug('trying login with cookie ' + uid);
         logged = await this.isLogged(uid);
       } catch (e) {
-        console.error(e.message);
+        this.logger.error(e.message);
       }
     };
     while (logged === false && retry < MAX_LOGIN_RETRY) {
       await l();
       if (logged === false && retry < MAX_LOGIN_RETRY) {
-        console.log('not logged');
+        this.logger.log('not logged');
         retry++;
         await sleep(1000);
       } else {
         if (logged) {
-          console.log('logged');
+          this.logger.log('logged');
           return uid;
         }
       }
@@ -164,7 +171,7 @@ export class VedoClient {
       );
       return loginInfo.logged === 1 && loginInfo.rt_stat === 9;
     } catch (e) {
-      console.error(e.message);
+      this.logger.error(e.message);
       return false;
     }
   }
