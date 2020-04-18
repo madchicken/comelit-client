@@ -438,11 +438,21 @@ export class ComelitSbClient {
     return resp.status === 200;
   }
 
+  async toggleThermostatStatus(clima: number, mode: ClimaOnOff): Promise<boolean> {
+    const resp = await axios.get(`${this.address}/user/action.cgi`, {
+      params: {
+        clima,
+        thermo: mode === ClimaOnOff.ON_THERMO ? 'on' : 'off',
+      },
+    });
+    return resp.status === 200;
+  }
+
   async toggleDehumidifierStatus(humi: number, mode: ClimaOnOff): Promise<boolean> {
     const resp = await axios.get(`${this.address}/user/action.cgi`, {
       params: {
         humi,
-        thermo: mode === ClimaOnOff.ON_THERMO ? 'on' : 'off',
+        thermo: mode === ClimaOnOff.ON_HUMI ? 'on' : 'off',
       },
     });
     return resp.status === 200;
