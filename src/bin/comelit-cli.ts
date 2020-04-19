@@ -469,7 +469,7 @@ async function switchThermostatState(index: string) {
         break;
       case ClimaMode.MANUAL:
       case ClimaMode.AUTO:
-        await client.toggleThermostatDehumidifierStatus(index, ClimaOnOff.OFF);
+        await client.toggleThermostatStatus(index, ClimaOnOff.OFF);
         break;
     }
   }
@@ -512,7 +512,7 @@ async function switchHumidifierState(index: string) {
         break;
       case ClimaMode.MANUAL:
       case ClimaMode.AUTO:
-        await client.toggleThermostatDehumidifierStatus(index, ClimaOnOff.OFF_HUMI);
+        await client.toggleHumidifierStatus(index, ClimaOnOff.OFF_HUMI);
         break;
     }
   }
@@ -524,7 +524,7 @@ async function setHumidifierTemperature(index: string, temperature: string) {
     const homeIndex = await client.fecthHomeIndex();
     const climaDeviceData = homeIndex.get(index);
     if (climaDeviceData) {
-      await client.setHumidifierTemperature(index, temp);
+      await client.setHumidity(index, temp);
     }
   } catch (e) {
     console.log(chalk.red(e.message));

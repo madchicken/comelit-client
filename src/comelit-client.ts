@@ -471,15 +471,19 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     return this.sendAction(id, ACTION_TYPE.SWITCH_SEASON, parseInt(mode));
   }
 
-  async setHumidifierTemperature(id: string, temperature: number): Promise<boolean> {
-    return this.sendAction(id, ACTION_TYPE.UMI_SETPOINT, temperature);
+  async setHumidity(id: string, humidity: number): Promise<boolean> {
+    return this.sendAction(id, ACTION_TYPE.UMI_SETPOINT, humidity);
   }
 
   async switchHumidifierMode(id: string, mode: ClimaMode): Promise<boolean> {
     return this.sendAction(id, ACTION_TYPE.SWITCH_UMI_MODE, parseInt(mode));
   }
 
-  async toggleThermostatDehumidifierStatus(id: string, mode: ClimaOnOff): Promise<boolean> {
+  async toggleHumidifierStatus(id: string, mode: ClimaOnOff): Promise<boolean> {
+    return this.sendAction(id, ACTION_TYPE.SET, mode);
+  }
+
+  async toggleThermostatStatus(id: string, mode: ClimaOnOff): Promise<boolean> {
     return this.sendAction(id, ACTION_TYPE.SET, mode);
   }
 

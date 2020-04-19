@@ -379,7 +379,7 @@ export class ComelitSbClient {
           break;
         case ClimaMode.OFF_AUTO:
         case ClimaMode.OFF_MANUAL:
-          return this.toggleDehumidifierStatus(clima, ClimaOnOff.OFF_THERMO);
+          return this.toggleHumidifierStatus(clima, ClimaOnOff.OFF_THERMO);
       }
     }
 
@@ -413,7 +413,7 @@ export class ComelitSbClient {
     return resp.status === 200;
   }
 
-  async switchDehumidifierMode(humi: number, mode: ClimaMode): Promise<boolean> {
+  async switchHumidifierMode(humi: number, mode: ClimaMode): Promise<boolean> {
     let thermo = null;
     if (mode) {
       switch (mode) {
@@ -425,7 +425,7 @@ export class ComelitSbClient {
           break;
         case ClimaMode.OFF_AUTO:
         case ClimaMode.OFF_MANUAL:
-          return this.toggleDehumidifierStatus(humi, ClimaOnOff.OFF_THERMO);
+          return this.toggleHumidifierStatus(humi, ClimaOnOff.OFF_THERMO);
       }
     }
 
@@ -448,7 +448,7 @@ export class ComelitSbClient {
     return resp.status === 200;
   }
 
-  async toggleDehumidifierStatus(humi: number, mode: ClimaOnOff): Promise<boolean> {
+  async toggleHumidifierStatus(humi: number, mode: ClimaOnOff): Promise<boolean> {
     const resp = await axios.get(`${this.address}/user/action.cgi`, {
       params: {
         humi,
