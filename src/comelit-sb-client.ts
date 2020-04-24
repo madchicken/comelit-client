@@ -210,11 +210,10 @@ export class ComelitSbClient {
           objectId: `${index}`,
           status: data.status[index] === 1 ? STATUS_ON : STATUS_OFF,
           type: OBJECT_TYPE.THERMOSTAT,
-          // FIXME: the assumption in next line is probably wrong
           sub_type:
-            data.type[index] === 13
+            data.type[index] >= 11 && data.type[index] <= 14 && data.type[index] !== 12
               ? OBJECT_SUBTYPE.CLIMA_THERMOSTAT_DEHUMIDIFIER
-              : OBJECT_SUBTYPE.CLIMA_DEHUMIDIFIER,
+              : OBJECT_SUBTYPE.CLIMA_TERM,
           descrizione: desc,
           isProtected: `${data.protected[index]}`,
           placeId: `${roomId}`,

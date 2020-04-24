@@ -177,18 +177,22 @@ export class VedoClient {
   }
 
   async areaDesc(uid: string): Promise<AreaDesc> {
+    this.logger.debug('Executing area desc call');
     return await doGet<AreaDesc>(this.address, this.config.area_desc, uid);
   }
 
   async areaStatus(uid: string): Promise<AreaStatus> {
+    this.logger.debug('Executing area status call');
     return doGet<AreaStatus>(this.address, this.config.area_stat, uid);
   }
 
   async zoneDesc(uid: string): Promise<ZoneDesc> {
+    this.logger.debug('Executing zone desc call');
     return doGet(this.address, this.config.zone_desc, uid);
   }
 
   async zoneStatus(uid: string): Promise<ZoneStatus[]> {
+    this.logger.debug('Executing zone status call');
     const page_list = [
       {
         hash: 'open',
