@@ -139,21 +139,21 @@ export class VedoClient {
         if (!uid) {
           uid = await this.login(code);
         }
-        this.logger.debug('trying login with cookie ' + uid);
+        this.logger.debug(`Trying login with cookie ${uid}`);
         logged = await this.isLogged(uid);
       } catch (e) {
-        this.logger.error(e.message);
+        this.logger.error(`Error logging in: ${e.message}`);
       }
     };
     while (logged === false && retry < MAX_LOGIN_RETRY) {
       await l();
       if (logged === false && retry < MAX_LOGIN_RETRY) {
-        this.logger.log('not logged');
+        this.logger.debug(`Not logged, retrying (${retry})`);
         retry++;
         await sleep(1000);
       } else {
         if (logged) {
-          this.logger.log('logged');
+          this.logger.log(`Logged with token ${uid}`);
           return uid;
         }
       }
@@ -171,7 +171,7 @@ export class VedoClient {
       );
       return loginInfo.logged === 1 && loginInfo.rt_stat === 9;
     } catch (e) {
-      this.logger.error(e.message);
+      this.logger.error(`Error checking login status: ${e.message}`);
       return false;
     }
   }
