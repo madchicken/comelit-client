@@ -191,7 +191,7 @@ export class VedoClient {
     return doGet(this.address, this.config.zone_desc, uid);
   }
 
-  async zoneStatus(uid: string): Promise<ZoneStatus[]> {
+  async zoneStatus(uid: string, zones?: ZoneDesc): Promise<ZoneStatus[]> {
     this.logger.debug('Executing zone status call');
     const page_list = [
       {
@@ -232,7 +232,7 @@ export class VedoClient {
       },
     ];
 
-    const zoneDesc = await doGet<ZoneDesc>(this.address, this.config.zone_desc, uid);
+    const zoneDesc = zones || await doGet<ZoneDesc>(this.address, this.config.zone_desc, uid);
     const zoneStatus = await doGet<ZoneStat>(this.address, this.config.zone_stat, uid);
     const statuses = zoneStatus.status.split(',');
     return zoneDesc.in_area.reduce((activeZones, present, index) => {
