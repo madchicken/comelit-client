@@ -250,8 +250,8 @@ export class VedoClient {
     }, []).filter(zone => !zone.excluded);
   }
 
-  async findActiveAreas(uid: string): Promise<AlarmArea[]> {
-    const areaDesc = await this.areaDesc(uid);
+  async findActiveAreas(uid: string, areas?: AreaDesc): Promise<AlarmArea[]> {
+    const areaDesc = areas || await this.areaDesc(uid);
     const areaStat = await this.areaStatus(uid);
     return areaDesc.present
       .map((areaNum, index) => {
