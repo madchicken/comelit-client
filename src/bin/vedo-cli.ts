@@ -51,8 +51,9 @@ async function run() {
     chalk.green(`Executing command ${command} - ${JSON.stringify(options)}`)
   );
   client = new VedoClient(options.host, options.port || 80);
-  const uid = await client.loginWithRetry(options.code);
+  let uid = null;
   try {
+    uid = await client.loginWithRetry(options.code); // this will throw an error if the system cannot login
     switch (command) {
       case 'area':
         if (options.desc) {
@@ -88,7 +89,9 @@ async function run() {
     console.log(chalk.green(`Command ${command} executed successfully`));
   } catch (e) {
     console.error(e.message);
-    await client.shutdown(uid);
+    if (uid) {
+      await client.shutdown(uid);
+    }
   }
 }
 

@@ -84,4 +84,18 @@ describe('vedo client', () => {
     const uid = await client.loginWithRetry('12345678');
     expect(uid).toBe('sid=B7FE1B2544A473F4');
   });
+
+  it('should stop login after max number of retries', async () => {
+    nock('http://localhost')
+      .post('/login.cgi', 'code=12345678')
+      .reply(200, {}).persist(true);
+
+    const client = new VedoClient('localhost');
+    const retry = 3;
+    try {
+      await client.loginWithRetry('12345678', retry);
+    } catch (e) {
+      expect(e.message).toBe(`Cannot login after ${retry} retries`);
+    }
+  });
 });

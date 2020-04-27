@@ -21,6 +21,8 @@ export function generateUUID(data: BinaryLike) {
   );
 }
 
+axios.defaults.timeout = 3000;
+
 export async function doGet<T = any>(
   address: string,
   path: string,
@@ -33,7 +35,7 @@ export async function doGet<T = any>(
       Cookie: uid,
       'X-Requested-With': 'XMLHttpRequest',
       Accept: '*/*',
-    }
+    },
   });
   if (resp.status >= 200 && resp.status < 300) {
     return resp.data;

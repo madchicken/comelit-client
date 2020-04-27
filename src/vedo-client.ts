@@ -130,36 +130,35 @@ export class VedoClient {
     throw new Error('Cannot logout');
   }
 
-  async loginWithRetry(code: string): Promise<string> {
+  async _login(code: string): Promise<string> {
+    try {
+      const uid = await this.login(code);
+      this.logger.debug(`Trying login with cookie ${uid}`);
+      const logged = await this.isLogged(uid);
+      if (logged) {
+        return uid;
+      }
+    } catch (e) {
+      this.logger.error(`Error logging in: ${e.message}`);
+    }
+    return null;
+  }
+
+  async loginWithRetry(code: string, maxRetries: number = MAX_LOGIN_RETRY): Promise<string> {
     let retry = 0;
     let uid = null;
-    let logged = false;
-    const l = async () => {
-      try {
-        if (!uid) {
-          uid = await this.login(code);
-        }
-        this.logger.debug(`Trying login with cookie ${uid}`);
-        logged = await this.isLogged(uid);
-      } catch (e) {
-        this.logger.error(`Error logging in: ${e.message}`);
-      }
-    };
-    while (logged === false && retry < MAX_LOGIN_RETRY) {
-      await l();
-      if (logged === false && retry < MAX_LOGIN_RETRY) {
-        this.logger.debug(`Not logged, retrying (${retry})`);
-        retry++;
-        await sleep(1000);
-      } else {
-        if (logged) {
-          this.logger.log(`Logged with token ${uid}`);
-          return uid;
-        }
-      }
+    while (uid === null && retry < maxRetries) {
+      retry++;
+      await sleep(1000);
+      uid = await this._login(code);
     }
 
-    throw new Error('Cannot login');
+    if (uid === null) {
+      throw new Error(`Cannot login after ${retry} retries`);
+    } else {
+      this.logger.log(`Logged with token ${uid}`);
+      return uid;
+    }
   }
 
   async isLogged(uid: string): Promise<boolean> {
