@@ -103,7 +103,14 @@ export class VedoClient {
     const resp = await axios.post<string>(
       `${this.address}${this.config.login}`,
       data
-    );
+    , {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.113 Safari/537.36',
+          'Referer': `${this.address}/user/index.htm`,
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': '*/*'
+        }
+      });
     if (resp.status >= 200 && resp.status < 300 && resp.headers['set-cookie']) {
       return resp.headers['set-cookie'][0];
     }
@@ -130,27 +137,39 @@ export class VedoClient {
     throw new Error('Cannot logout');
   }
 
-  async _login(code: string): Promise<string> {
-    try {
-      const uid = await this.login(code);
-      this.logger.debug(`Trying login with cookie ${uid}`);
-      const logged = await this.isLogged(uid);
-      if (logged) {
-        return uid;
-      }
-    } catch (e) {
-      this.logger.error(`Error logging in: ${e.message}`);
-    }
-    return null;
-  }
-
   async loginWithRetry(code: string, maxRetries: number = MAX_LOGIN_RETRY): Promise<string> {
     let retry = 0;
     let uid = null;
+    let logged = false;
+
+    const _login = async (code: string): Promise<string> => {
+      try {
+        while (!uid && retry < maxRetries) {
+          uid = await this.login(code);
+          retry++;
+        }
+        if (uid) {
+          retry = 0;
+          this.logger.debug(`Trying login with cookie ${uid}`);
+          while (!logged && retry < maxRetries) {
+            retry++;
+            logged = await this.isLogged(uid);
+            if (logged) {
+              return uid;
+            }
+            await sleep(1000);
+          }
+        }
+      } catch (e) {
+        this.logger.error(`Error logging in: ${e.message}`);
+      }
+      return null;
+    };
+
     while (uid === null && retry < maxRetries) {
       retry++;
       await sleep(1000);
-      uid = await this._login(code);
+      uid = await _login(code);
     }
 
     if (uid === null) {
