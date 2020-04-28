@@ -80,6 +80,8 @@ const DEFAULT_URL_CONFIG: VedoClientConfig = {
   code_param: 'code',
 };
 
+const CHROME_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.113 Safari/537.36';
+
 export class VedoClient {
   private readonly address: string;
   private readonly config: VedoClientConfig;
@@ -105,8 +107,7 @@ export class VedoClient {
       data
     , {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.113 Safari/537.36',
-          'Referer': `${this.address}/user/index.htm`,
+          'User-Agent': CHROME_USER_AGENT,
           'X-Requested-With': 'XMLHttpRequest',
           'Accept': '*/*'
         }
