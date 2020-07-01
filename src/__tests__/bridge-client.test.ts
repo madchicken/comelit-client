@@ -187,7 +187,7 @@ describe('Comelit Serial Bridge client', () => {
     mockOtherIconDesc();
 
     const client = new ComelitSbClient('localhost', 8090);
-    const homeIndex = await client.fecthHomeIndex();
+    const homeIndex = await client.fetchHomeIndex();
     expect(homeIndex).toBeDefined();
     expect(homeIndex.roomsIndex.size).toBe(10);
     expect(homeIndex.blindsIndex.size).toBe(10);
@@ -245,7 +245,7 @@ describe('Comelit Serial Bridge client', () => {
       });
 
     const client = new ComelitSbClient('localhost', 8090);
-    const homeIndex = await client.fecthHomeIndex();
+    const homeIndex = await client.fetchHomeIndex();
     await client.updateHomeStatus(homeIndex);
     expect(homeIndex.lightsIndex.get(`DOM#LT#0`).status).toBe(STATUS_ON);
     expect(homeIndex.lightsIndex.get(`DOM#LT#1`).status).toBe(STATUS_OFF);
