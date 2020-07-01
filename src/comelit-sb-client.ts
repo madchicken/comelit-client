@@ -141,7 +141,7 @@ export class ComelitSbClient {
     return Promise.resolve();
   }
 
-  async fecthHomeIndex(): Promise<HomeIndex> {
+  async fetchHomeIndex(): Promise<HomeIndex> {
     const rooms: DeviceIndex = new Map<string, DeviceData>();
     let data: DeviceInfo = await this.fetchDeviceDesc('light');
     data.env_desc.forEach((desc, index) => {

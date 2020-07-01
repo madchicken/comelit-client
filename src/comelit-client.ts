@@ -144,15 +144,28 @@ function bytesToHex(byteArray: Buffer): String {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DEFAULT_TIMEOUT = 5000;
 
+export interface ClientConfig {
+  host: string,
+  port?: number,
+  username?: string,
+  password?: string,
+}
+
+export interface HUBClientConfig extends ClientConfig {
+  hub_username?: string,
+  hub_password?: string,
+  clientId?: string
+}
+
 export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMessage> {
   private readonly props: ComelitProps;
   private homeIndex: HomeIndex;
   private username: string;
   private password: string;
-  private writeTopic: string;
-  private readTopic: string;
+  private txTopic: string;
+  private rxTopic: string;
   private clientId: string;
-  private readonly onUpdate: (objId: string, device: DeviceData) => void;
+  private readonly onUpdate: (objId: string, data: Readonly<DeviceData>, oldData?: Readonly<DeviceData>) => void;
   private readonly logger: ConsoleLike;
 
   constructor(
@@ -190,10 +203,11 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     } else {
       if (response.obj_id && response.out_data && response.out_data.length && this.homeIndex) {
         const datum: DeviceData = response.out_data[0];
-        const value = this.homeIndex.updateObject(response.obj_id, datum);
+        const oldValue = Object.freeze(this.homeIndex.get(response.obj_id));
+        const value = Object.freeze(this.homeIndex.updateObject(response.obj_id, datum));
         if (this.onUpdate && value) {
           this.logger.info(`Updating ${response.obj_id} with data ${JSON.stringify(datum)}`);
-          this.onUpdate(response.obj_id, value);
+          this.onUpdate(response.obj_id, value, oldValue);
         }
       }
     }
@@ -285,29 +299,22 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     });
   }
 
-  async init(
-    brokerUrl: string,
-    username: string,
-    password: string,
-    hub_username?: string,
-    hub_password?: string,
-    clientId?: string
-  ): Promise<AsyncMqttClient> {
-    const broker = brokerUrl.startsWith('mqtt://') ? brokerUrl : `mqtt://${brokerUrl}`;
-    this.username = username;
-    this.password = password;
-    this.clientId = this.getOrCreateClientId(clientId);
-    this.readTopic = `${CLIENT_ID_PREFIX}/${HUB_ID}/tx/${this.clientId}`;
-    this.writeTopic = `${CLIENT_ID_PREFIX}/${HUB_ID}/rx/${this.clientId}`;
+  async init(config: HUBClientConfig): Promise<AsyncMqttClient> {
+    const broker = config.host.startsWith('mqtt://') ? config.host : `mqtt://${config.host}`;
+    this.username = config.username;
+    this.password = config.password;
+    this.clientId = this.getOrCreateClientId(config.clientId);
+    this.rxTopic = `${CLIENT_ID_PREFIX}/${HUB_ID}/tx/${this.clientId}`;
+    this.txTopic = `${CLIENT_ID_PREFIX}/${HUB_ID}/rx/${this.clientId}`;
     this.logger.info(`Connecting to Comelit HUB at ${broker} with clientID ${this.clientId}`);
     this.props.client = await connectAsync(broker, {
-      username: hub_username || 'hsrv-user',
-      password: hub_password || 'sf1nE9bjPc',
-      clientId: clientId || CLIENT_ID_PREFIX,
+      username: config.hub_username || 'hsrv-user',
+      password: config.hub_password || 'sf1nE9bjPc',
+      clientId: config.clientId || CLIENT_ID_PREFIX,
       keepalive: 120,
     });
     // Register to incoming messages
-    await this.subscribeTopic(this.readTopic, this.handleIncomingMessage.bind(this));
+    await this.subscribeTopic(this.rxTopic, this.handleIncomingMessage.bind(this));
     this.setTimeout(DEFAULT_TIMEOUT);
     this.props.agent_id = await this.retriveAgentId();
     this.logger.info(`...done: client agent id is ${this.props.agent_id}`);
@@ -334,7 +341,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
       try {
         this.flush(true);
         this.logger.info('Comelit client unsubscribe from read topic');
-        await this.props.client.unsubscribe(this.readTopic);
+        await this.props.client.unsubscribe(this.rxTopic);
         this.logger.info('Comelit client ending session');
         await this.props.client.end(true);
       } catch (e) {
@@ -450,7 +457,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     return ComelitClient.evalResponse(response).then(() => response.out_data[0] as DeviceData);
   }
 
-  async fecthHomeIndex(): Promise<HomeIndex> {
+  async fetchHomeIndex(): Promise<HomeIndex> {
     const root = await this.device(ROOT_ID);
     return this.mapHome(root);
   }
@@ -516,7 +523,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
   private async publish(packet: MqttMessage): Promise<MqttIncomingMessage> {
     this.logger.info(`Sending message to HUB ${JSON.stringify(packet)}`);
     try {
-      await this.props.client.publish(this.writeTopic, JSON.stringify(packet));
+      await this.props.client.publish(this.txTopic, JSON.stringify(packet));
       return await this.enqueue(packet);
     } catch (response) {
       if (response.req_result === 1 && response.message === 'invalid token') {
@@ -529,7 +536,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
 
   private handleIncomingMessage(topic: string, message: any) {
     const msg: MqttIncomingMessage = deserializeMessage(message);
-    if (topic === this.readTopic) {
+    if (topic === this.rxTopic) {
       this.processQueue(msg);
     } else {
       console.error(`Unknown topic ${topic}, message ${msg.toString()}`);

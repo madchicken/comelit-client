@@ -175,7 +175,7 @@ export class HomeIndex {
   public readonly supplierIndex: DeviceIndex<SupplierDeviceData> = new Map<string,
       SupplierDeviceData>();
 
-  public readonly mainIndex: DeviceIndex = new Map<string, DeviceData>();
+  public readonly mainIndex: DeviceIndex = new Map<string, Readonly<DeviceData>>();
 
   constructor(home: DeviceData) {
     home.elements.forEach((info: DeviceInfo) => {
@@ -187,11 +187,11 @@ export class HomeIndex {
     return this.mainIndex.get(id);
   }
 
-  updateObject(id: string, data: DeviceData): DeviceData {
+  updateObject(id: string, data: Readonly<DeviceData>): DeviceData {
     if (this.mainIndex.has(id)) {
       const deviceData = this.mainIndex.get(id);
       const value = {...deviceData, ...data};
-      this.mainIndex.set(id, value);
+      this.mainIndex.set(id, Object.freeze(value));
       return value;
     }
     return null;

@@ -2,7 +2,7 @@
 import yargs = require('yargs');
 import chalk from 'chalk';
 import {ACTION_TYPE, ClimaMode, ClimaOnOff, ComelitClient, ROOT_ID, ThermoSeason} from '../comelit-client';
-import {OFF, ON, STATUS_OFF, STATUS_ON, ThermostatDeviceData} from '../types';
+import {OBJECT_SUBTYPE, OFF, ON, STATUS_OFF, STATUS_ON, ThermostatDeviceData} from '../types';
 
 const readline = require('readline');
 
@@ -238,14 +238,7 @@ async function run() {
     if (command === 'scan') {
       await scan();
     } else {
-      await client.init(
-        options.host,
-        options.username,
-        options.password,
-        options.broker_username,
-        options.broker_password,
-        options.client_id
-      );
+      await client.init(options);
       await client.login();
 
       switch (command) {
@@ -351,27 +344,40 @@ async function zones(id: string) {
 }
 
 async function listRooms() {
-  const homeIndex = await client.fecthHomeIndex();
+  const homeIndex = await client.fetchHomeIndex();
   [...homeIndex.roomsIndex.values()].forEach(room => {
     console.log(chalk.green(`${room.id} - ${room.descrizione}`));
   });
 }
 
 async function listLights() {
-  const homeIndex = await client.fecthHomeIndex();
+  const homeIndex = await client.fetchHomeIndex();
   [...homeIndex.lightsIndex.values()].forEach(light => {
+    let subtype= 'Unknown light type';
+    switch (light.sub_type) {
+      case OBJECT_SUBTYPE.DIGITAL_LIGHT:
+        subtype = 'Digital light';
+        break;
+      case OBJECT_SUBTYPE.TEMPORIZED_LIGHT:
+        subtype = 'Temporized light';
+        break;
+      case OBJECT_SUBTYPE.RGB_LIGHT:
+        subtype = 'RGB light';
+        break;
+    }
+
     console.log(
       chalk.green(
         `${light.objectId} - ${light.descrizione} (status ${
           light.status === STATUS_ON ? 'ON' : 'OFF'
-        })`
+        } (${subtype})`
       )
     );
   });
 }
 
 async function listOutlets() {
-  const homeIndex = await client.fecthHomeIndex();
+  const homeIndex = await client.fetchHomeIndex();
   [...homeIndex.outletsIndex.values()].forEach(outlet => {
     console.log(
       chalk.green(
@@ -384,7 +390,7 @@ async function listOutlets() {
 }
 
 async function listShutters() {
-  const homeIndex = await client.fecthHomeIndex();
+  const homeIndex = await client.fetchHomeIndex();
   [...homeIndex.blindsIndex.values()].forEach(blind => {
     console.log(
       chalk.green(
@@ -397,25 +403,32 @@ async function listShutters() {
 }
 
 async function listClima() {
-  const homeIndex = await client.fecthHomeIndex();
+  const homeIndex = await client.fetchHomeIndex();
   [...homeIndex.thermostatsIndex.values()].forEach(clima => {
-    const auto_man = clima.auto_man;
-    const isOff = auto_man === ClimaMode.OFF_AUTO || auto_man === ClimaMode.OFF_MANUAL;
-    const isManual = auto_man === ClimaMode.OFF_MANUAL || auto_man === ClimaMode.MANUAL;
-    console.log(
-      chalk.green(
-        `${clima.objectId} - ${clima.descrizione} (status ${isOff ? 'OFF' : 'ON'}, ${
-          isManual ? 'manual mode' : 'auto mode'
-        }, ${clima.est_inv === ThermoSeason.WINTER ? 'winter' : 'summer'}, Temperature ${parseInt(
-          clima.temperatura
-        ) / 10}°, Humidity level ${parseInt(clima.umidita)}%). Heating/Dehumidification is ${clima.status === STATUS_ON ? 'on' : 'off'}`
-      )
-    );
-  });
+      const auto_man = clima.auto_man;
+      const isOff = auto_man === ClimaMode.OFF_AUTO || auto_man === ClimaMode.OFF_MANUAL;
+      const isManual = auto_man === ClimaMode.OFF_MANUAL || auto_man === ClimaMode.MANUAL;
+      console.log(
+        chalk.green(
+          `${clima.objectId} - ${clima.descrizione}:\nThermostat status ${isOff ? 'OFF' : 'ON'}, ${
+            isManual ? 'manual mode' : 'auto mode'
+          }, ${clima.est_inv === ThermoSeason.WINTER ? 'winter' : 'summer'}, Temperature ${parseInt(
+            clima.temperatura
+          ) / 10}°, threshold ${parseInt(clima.soglia_attiva) / 10}°`
+        )
+      );
+      const humi_auto_man = clima.auto_man_umi;
+      const humi_isOff = humi_auto_man === ClimaMode.OFF_AUTO || humi_auto_man === ClimaMode.OFF_MANUAL;
+      const humi_isManual = humi_auto_man === ClimaMode.OFF_MANUAL || humi_auto_man === ClimaMode.MANUAL;
+      console.log(chalk.blue(`Dehumidifier status is ${humi_isOff ? 'OFF' : 'ON'}, ${
+        humi_isManual ? 'manual mode' : 'auto mode'
+      }, Humidity level ${parseInt(clima.umidita)}%, threshold ${clima.soglia_attiva_umi}%\nGeneral status is ${clima.status === '1' ? 'ON' : 'OFF'}\n`));
+    }
+  );
 }
 
 async function toggleLight(index: string) {
-  const homeIndex = await client.fecthHomeIndex();
+  const homeIndex = await client.fetchHomeIndex();
   const lightDeviceData = homeIndex.get(index);
   if (lightDeviceData) {
     if (lightDeviceData.status === STATUS_OFF) {
@@ -429,7 +442,7 @@ async function toggleLight(index: string) {
 }
 
 async function toggleOutlets(index: string) {
-  const homeIndex = await client.fecthHomeIndex();
+  const homeIndex = await client.fetchHomeIndex();
   const otherDeviceData = homeIndex.get(index);
   if (otherDeviceData) {
     if (otherDeviceData.status === STATUS_OFF) {
@@ -443,7 +456,7 @@ async function toggleOutlets(index: string) {
 }
 
 async function toggleShutter(index: string) {
-  const homeIndex = await client.fecthHomeIndex();
+  const homeIndex = await client.fetchHomeIndex();
   const blindDeviceData = homeIndex.get(index);
   if (blindDeviceData) {
     if (blindDeviceData.status === STATUS_OFF) {
@@ -457,7 +470,7 @@ async function toggleShutter(index: string) {
 }
 
 async function switchThermostatState(index: string) {
-  const homeIndex = await client.fecthHomeIndex();
+  const homeIndex = await client.fetchHomeIndex();
   const climaDeviceData: ThermostatDeviceData = homeIndex.get(index);
   if (climaDeviceData) {
     switch (climaDeviceData.auto_man) {
@@ -476,7 +489,7 @@ async function switchThermostatState(index: string) {
 }
 
 async function switchThermostatSeason(index: string, season: string) {
-  const homeIndex = await client.fecthHomeIndex();
+  const homeIndex = await client.fetchHomeIndex();
   const climaDeviceData: ThermostatDeviceData = homeIndex.get(index);
   if (climaDeviceData) {
     await client.switchThermostatSeason(
@@ -489,7 +502,7 @@ async function switchThermostatSeason(index: string, season: string) {
 async function setThermostatTemperature(index: string, temperature: string) {
   try {
     const temp = parseFloat(temperature);
-    const homeIndex = await client.fecthHomeIndex();
+    const homeIndex = await client.fetchHomeIndex();
     const climaDeviceData = homeIndex.get(index);
     if (climaDeviceData) {
       await client.setTemperature(index, temp * 10);
@@ -500,7 +513,7 @@ async function setThermostatTemperature(index: string, temperature: string) {
 }
 
 async function switchHumidifierState(index: string) {
-  const homeIndex = await client.fecthHomeIndex();
+  const homeIndex = await client.fetchHomeIndex();
   const climaDeviceData: ThermostatDeviceData = homeIndex.get(index);
   if (climaDeviceData) {
     switch (climaDeviceData.auto_man_umi) {
@@ -521,7 +534,7 @@ async function switchHumidifierState(index: string) {
 async function setHumidifierTemperature(index: string, temperature: string) {
   try {
     const temp = parseFloat(temperature);
-    const homeIndex = await client.fecthHomeIndex();
+    const homeIndex = await client.fetchHomeIndex();
     const climaDeviceData = homeIndex.get(index);
     if (climaDeviceData) {
       await client.setHumidity(index, temp);
