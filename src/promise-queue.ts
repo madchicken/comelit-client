@@ -28,10 +28,7 @@ export abstract class PromiseBasedQueue<M, R> implements Queue<M, R> {
     this.queuedMessages = [];
   }
 
-  abstract processResponse(
-    messages: DeferredMessage<M, R>[],
-    response: R
-  ): boolean;
+  abstract processResponse(messages: DeferredMessage<M, R>[], response: R): boolean;
 
   setTimeout(timeout: number) {
     if (timeout && timeout > 0) {
@@ -43,25 +40,18 @@ export abstract class PromiseBasedQueue<M, R> implements Queue<M, R> {
 
   cleanPending(timeout: number) {
     const timestamp = new Date().getTime();
-    const toKeep = this.queuedMessages.reduce(
-      (keep: DeferredMessage<M, R>[], value) => {
-        const delta = timestamp - value.timestamp;
-        if (delta > timeout) {
-          console.error(
-            `Rejecting unresolved promise after ${delta}ms (${JSON.stringify(
-              value.message
-            )})`
-          );
-          value.promise.reject(
-            new Error(`Timeout for message:  ${JSON.stringify(value.message)}`)
-          );
-          return keep;
-        }
-        keep.push(value);
+    const toKeep = this.queuedMessages.reduce((keep: DeferredMessage<M, R>[], value) => {
+      const delta = timestamp - value.timestamp;
+      if (delta > timeout) {
+        console.error(
+          `Rejecting unresolved promise after ${delta}ms (${JSON.stringify(value.message)})`
+        );
+        value.promise.reject(new Error(`Timeout for message:  ${JSON.stringify(value.message)}`));
         return keep;
-      },
-      []
-    );
+      }
+      keep.push(value);
+      return keep;
+    }, []);
     this.flush();
     this.queuedMessages.push(...toKeep);
     this.timeout.refresh();
@@ -69,18 +59,14 @@ export abstract class PromiseBasedQueue<M, R> implements Queue<M, R> {
 
   flush(shutdown?: boolean): void {
     if (shutdown) {
-      this.queuedMessages.forEach(value =>
-        value.promise.reject(new Error('Shutting down'))
-      );
+      this.queuedMessages.forEach((value) => value.promise.reject(new Error('Shutting down')));
     }
     this.queuedMessages.length = 0;
   }
 
   processQueue(response: R) {
     if (this.processResponse(this.queuedMessages, response)) {
-      console.log(
-        `Message processed. Message queue size is now ${this.queuedMessages.length}`
-      );
+      console.log(`Message processed. Message queue size is now ${this.queuedMessages.length}`);
     }
   }
 

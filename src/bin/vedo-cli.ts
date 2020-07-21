@@ -47,9 +47,7 @@ let client: VedoClient = null;
 
 async function run() {
   const command = options._[0];
-  console.log(
-    chalk.green(`Executing command ${command} - ${JSON.stringify(options)}`)
-  );
+  console.log(chalk.green(`Executing command ${command} - ${JSON.stringify(options)}`));
   client = new VedoClient(options.host, options.port || 80);
   let uid = null;
   try {

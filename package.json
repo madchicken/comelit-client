@@ -1,6 +1,6 @@
 {
   "name": "comelit-client",
-  "version": "1.7.2",
+  "version": "1.7.3",
   "author": "Pierpaolo Follia",
   "repository": {
     "type": "git",
@@ -33,16 +33,15 @@
     "clean": "rimraf dist/"
   },
   "dependencies": {
-    "@sentry/node": "5.12.2",
-    "async-mqtt": "^2.4.2",
-    "axios": "^0.19.2",
-    "chalk": "^3.0.0",
-    "lodash": "^4.17.15",
-    "mqtt": "^3.0.0",
-    "mqtt-packet": "^6.3.0",
-    "querystring": "^0.2.0",
-    "typescript": "^3.7.4",
-    "yargs": "^15.1.0"
+    "async-mqtt": "2.6.1",
+    "axios": "0.19.2",
+    "chalk": "3.0.0",
+    "lodash": "4.17.19",
+    "mqtt": "4.1.0",
+    "mqtt-packet": "6.3.2",
+    "querystring": "0.2.0",
+    "typescript": "3.9.7",
+    "yargs": "15.4.1"
   },
   "bin": {
     "comelit": "./dist/bin/comelit-cli.js",
@@ -50,22 +49,22 @@
     "vedo": "./dist/bin/vedo-cli.js"
   },
   "devDependencies": {
-    "@types/chalk": "^2.2.0",
-    "@types/lodash": "^4.14.149",
-    "@types/mqtt": "^2.5.0",
-    "@types/node": "^11.15.3",
-    "@types/yargs": "^15.0.0",
-    "@types/jest": "^25.1.4",
-    "@types/nock": "^11.1.0",
-    "@typescript-eslint/eslint-plugin": "^2.14.0",
-    "@typescript-eslint/parser": "^2.14.0",
-    "@types/axios": "^0.14.0",
-    "eslint": "^6.4.0",
-    "eslint-config-prettier": "^6.10.0",
-    "prettier": "^1.19.1",
-    "rimraf": "^3.0.2",
-    "jest": "^25.1.0",
-    "ts-jest": "^25.2.1",
-    "nock": "^12.0.2"
+    "@types/chalk": "2.2.0",
+    "@types/lodash": "4.14.157",
+    "@types/mqtt": "2.5.0",
+    "@types/node": "12.12.6",
+    "@types/yargs": "15.0.5",
+    "@types/jest": "25.1.4",
+    "@types/nock": "11.1.0",
+    "@typescript-eslint/eslint-plugin": "2.14.0",
+    "@typescript-eslint/parser": "2.14.0",
+    "@types/axios": "0.14.0",
+    "eslint": "7.5.0",
+    "eslint-config-prettier": "6.11.0",
+    "prettier": "2.0.5",
+    "rimraf": "3.0.2",
+    "jest": "25.1.0",
+    "ts-jest": "25.2.1",
+    "nock": "12.0.2"
   }
 }

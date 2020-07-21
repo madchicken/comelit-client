@@ -3,7 +3,7 @@ import { DeferredMessage, PromiseBasedQueue } from './promise-queue';
 import { generateUUID } from './utils';
 import dgram, { RemoteInfo } from 'dgram';
 import { AddressInfo } from 'net';
-import {ConsoleLike, DeviceData, HomeIndex} from './types';
+import { ConsoleLike, DeviceData, HomeIndex } from './types';
 import Timeout = NodeJS.Timeout;
 
 export const ROOT_ID = 'GEN#17#13#1';
@@ -145,16 +145,16 @@ function bytesToHex(byteArray: Buffer): String {
 const DEFAULT_TIMEOUT = 5000;
 
 export interface ClientConfig {
-  host: string,
-  port?: number,
-  username?: string,
-  password?: string,
+  host: string;
+  port?: number;
+  username?: string;
+  password?: string;
 }
 
 export interface HUBClientConfig extends ClientConfig {
-  hub_username?: string,
-  hub_password?: string,
-  clientId?: string
+  hub_username?: string;
+  hub_password?: string;
+  clientId?: string;
 }
 
 export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMessage> {
@@ -165,13 +165,14 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
   private txTopic: string;
   private rxTopic: string;
   private clientId: string;
-  private readonly onUpdate: (objId: string, data: Readonly<DeviceData>, oldData?: Readonly<DeviceData>) => void;
+  private readonly onUpdate: (
+    objId: string,
+    data: Readonly<DeviceData>,
+    oldData?: Readonly<DeviceData>
+  ) => void;
   private readonly logger: ConsoleLike;
 
-  constructor(
-    onUpdate?: (objId: string, device: DeviceData) => void,
-    log?: ConsoleLike
-  ) {
+  constructor(onUpdate?: (objId: string, device: DeviceData) => void, log?: ConsoleLike) {
     super();
     this.props = {
       client: null,
@@ -187,7 +188,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
   ): boolean {
     const deferredMqttMessage = response.seq_id
       ? messages.find(
-          message =>
+          (message) =>
             message.message.seq_id == response.seq_id &&
             message.message.req_type == response.req_type
         )
@@ -219,7 +220,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
   }
 
   scan(): Promise<void> {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       const server = dgram.createSocket('udp4');
       let timeout: Timeout;
       function sendScan() {
@@ -246,7 +247,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
         this.logger.info(`server listening ${address.address}:${address.port}`);
       });
 
-      server.on('error', err => {
+      server.on('error', (err) => {
         this.logger.info(`server error:\n${err.stack}`);
         clearInterval(timeout);
         server.close();
@@ -416,7 +417,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
       obj_id: id,
     };
     const response = await this.publish(packet);
-    return ComelitClient.evalResponse(response).then(value => value);
+    return ComelitClient.evalResponse(response).then((value) => value);
   }
 
   async ping(): Promise<boolean> {
@@ -427,7 +428,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
       sessiontoken: this.props.sessiontoken,
     };
     const response = await this.publish(packet);
-    return ComelitClient.evalResponse(response).then(value => value);
+    return ComelitClient.evalResponse(response).then((value) => value);
   }
 
   async device(objId: string = ROOT_ID, detailLevel?: number): Promise<DeviceData> {
@@ -505,7 +506,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
       act_params: [value],
     };
     const response = await this.publish(packet);
-    return ComelitClient.evalResponse(response).then(value => value);
+    return ComelitClient.evalResponse(response).then((value) => value);
   }
 
   private static evalResponse(response: MqttIncomingMessage): Promise<boolean> {

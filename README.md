@@ -9,6 +9,12 @@ The package contains three different tools:
 2. vedo - a CLI to interact with Comelit Vedo Alarm
 3. comelit-sb - a CLI to interact with comelit Serial Bridge (https://pro.comelitgroup.com/product/20003101)
 
+## Installation
+
+To install this tool use the command:
+
+`npm install -g comelit-client@latest`
+
 ## Comelit CLI
 
 ## Vedo Alarm CLI

@@ -1,6 +1,6 @@
-import {doGet, sleep} from './utils';
-import axios from "axios";
-import {ConsoleLike} from "./types";
+import { doGet, sleep } from './utils';
+import axios from 'axios';
+import { ConsoleLike } from './types';
 
 export interface LoginInfo {
   rt_stat: number;
@@ -80,7 +80,8 @@ const DEFAULT_URL_CONFIG: VedoClientConfig = {
   code_param: 'code',
 };
 
-const CHROME_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.113 Safari/537.36';
+const CHROME_USER_AGENT =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.113 Safari/537.36';
 
 export class VedoClient {
   private readonly address: string;
@@ -102,16 +103,13 @@ export class VedoClient {
 
   private async login(code: string): Promise<string> {
     const data = `${this.config.code_param}=${code}`;
-    const resp = await axios.post<string>(
-      `${this.address}${this.config.login}`,
-      data
-    , {
-        headers: {
-          'User-Agent': CHROME_USER_AGENT,
-          'X-Requested-With': 'XMLHttpRequest',
-          'Accept': '*/*'
-        }
-      });
+    const resp = await axios.post<string>(`${this.address}${this.config.login}`, data, {
+      headers: {
+        'User-Agent': CHROME_USER_AGENT,
+        'X-Requested-With': 'XMLHttpRequest',
+        Accept: '*/*',
+      },
+    });
     if (resp.status >= 200 && resp.status < 300 && resp.headers['set-cookie']) {
       return resp.headers['set-cookie'][0];
     }
@@ -122,15 +120,11 @@ export class VedoClient {
   async logout(uid: string) {
     const data = `logout=1`;
 
-    const resp = await axios.post<string>(
-      `${this.address}${this.config.login}`,
-      data,
-      {
-        headers: {
-          Cookie: uid,
-        }
-      }
-    );
+    const resp = await axios.post<string>(`${this.address}${this.config.login}`, data, {
+      headers: {
+        Cookie: uid,
+      },
+    });
     if (resp.status >= 200 && resp.status < 300) {
       return true;
     }
@@ -251,26 +245,26 @@ export class VedoClient {
       },
     ];
 
-    const zoneDesc = zones || await doGet<ZoneDesc>(this.address, this.config.zone_desc, uid);
+    const zoneDesc = zones || (await doGet<ZoneDesc>(this.address, this.config.zone_desc, uid));
     const zoneStatus = await doGet<ZoneStat>(this.address, this.config.zone_stat, uid);
     const statuses = zoneStatus.status.split(',');
-    return zoneDesc.in_area.reduce((activeZones, present, index) => {
-      if (present === 1) {
-        const stat = {
-          description: zoneDesc.description[index],
-        };
-        const status = statuses[index];
-        page_list.forEach(
-          o => (stat[o.hash] = (parseInt(status) & o.bit_mask) !== 0)
-        );
-        activeZones.push(stat);
-      }
-      return activeZones;
-    }, []).filter(zone => !zone.excluded);
+    return zoneDesc.in_area
+      .reduce((activeZones, present, index) => {
+        if (present === 1) {
+          const stat = {
+            description: zoneDesc.description[index],
+          };
+          const status = statuses[index];
+          page_list.forEach((o) => (stat[o.hash] = (parseInt(status) & o.bit_mask) !== 0));
+          activeZones.push(stat);
+        }
+        return activeZones;
+      }, [])
+      .filter((zone) => !zone.excluded);
   }
 
   async findActiveAreas(uid: string, areas?: AreaDesc): Promise<AlarmArea[]> {
-    const areaDesc = areas || await this.areaDesc(uid);
+    const areaDesc = areas || (await this.areaDesc(uid));
     const areaStat = await this.areaStatus(uid);
     return areaDesc.present
       .map((areaNum, index) => {
@@ -286,7 +280,7 @@ export class VedoClient {
         }
         return null;
       })
-      .filter(a => a !== null);
+      .filter((a) => a !== null);
   }
 
   async arm(uid: string, area: number) {
@@ -301,7 +295,7 @@ export class VedoClient {
         Cookie: uid,
         'X-Requested-With': 'XMLHttpRequest',
         Accept: '*/*',
-      }
+      },
     });
     if (resp.status === 200) {
       return resp.data;
@@ -321,7 +315,7 @@ export class VedoClient {
         Cookie: uid,
         'X-Requested-With': 'XMLHttpRequest',
         Accept: '*/*',
-      }
+      },
     });
     if (resp.status === 200) {
       return resp.data;

@@ -11,7 +11,7 @@ import {
   STATUS_ON,
   ThermostatDeviceData,
 } from './types';
-import {ClimaMode, ClimaOnOff, ROOT_ID, ThermoSeason} from './comelit-client';
+import { ClimaMode, ClimaOnOff, ROOT_ID, ThermoSeason } from './comelit-client';
 
 export interface BridgeLoginInfo {
   domus: string;
@@ -254,7 +254,7 @@ export class ComelitSbClient {
       type: OBJECT_TYPE.ZONE,
       sub_type: OBJECT_SUBTYPE.GENERIC_ZONE,
       descrizione: 'root',
-      elements: [...rooms.values()].map(dd => ({ id: dd.id, data: dd })),
+      elements: [...rooms.values()].map((dd) => ({ id: dd.id, data: dd })),
     });
   }
 

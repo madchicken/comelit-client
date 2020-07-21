@@ -1,4 +1,4 @@
-import {ClimaMode, ThermoSeason} from './comelit-client';
+import { ClimaMode, ThermoSeason } from './comelit-client';
 
 export interface DomoticData {
   id: string;
@@ -139,7 +139,7 @@ export enum OBJECT_TYPE {
   THERMOSTAT = 9,
   OUTLET = 10,
   POWER_SUPPLIER = 11,
-  ZONE = 1001
+  ZONE = 1001,
 }
 
 export enum OBJECT_SUBTYPE {
@@ -153,27 +153,28 @@ export enum OBJECT_SUBTYPE {
   GENERIC_ZONE = 13,
   CONSUMPTION = 15,
   CLIMA_THERMOSTAT_DEHUMIDIFIER = 16,
-  CLIMA_DEHUMIDIFIER = 17
+  CLIMA_DEHUMIDIFIER = 17,
 }
 
 export const ON = 1;
 export const OFF = 0;
 export const IDLE = 2;
-export const STATUS_ON = "1";
-export const STATUS_OFF = "0";
+export const STATUS_ON = '1';
+export const STATUS_OFF = '0';
 
 export class HomeIndex {
-  public readonly lightsIndex: DeviceIndex<LightDeviceData> = new Map<string,
-      LightDeviceData>();
+  public readonly lightsIndex: DeviceIndex<LightDeviceData> = new Map<string, LightDeviceData>();
   public readonly roomsIndex: DeviceIndex = new Map() as DeviceIndex;
-  public readonly thermostatsIndex: DeviceIndex<ThermostatDeviceData> = new Map<string,
-      ThermostatDeviceData>();
-  public readonly blindsIndex: DeviceIndex<BlindDeviceData> = new Map<string,
-      BlindDeviceData>();
-  public readonly outletsIndex: DeviceIndex<OutletDeviceData> = new Map<string,
-      OutletDeviceData>();
-  public readonly supplierIndex: DeviceIndex<SupplierDeviceData> = new Map<string,
-      SupplierDeviceData>();
+  public readonly thermostatsIndex: DeviceIndex<ThermostatDeviceData> = new Map<
+    string,
+    ThermostatDeviceData
+  >();
+  public readonly blindsIndex: DeviceIndex<BlindDeviceData> = new Map<string, BlindDeviceData>();
+  public readonly outletsIndex: DeviceIndex<OutletDeviceData> = new Map<string, OutletDeviceData>();
+  public readonly supplierIndex: DeviceIndex<SupplierDeviceData> = new Map<
+    string,
+    SupplierDeviceData
+  >();
 
   public readonly mainIndex: DeviceIndex = new Map<string, Readonly<DeviceData>>();
 
@@ -190,7 +191,7 @@ export class HomeIndex {
   updateObject(id: string, data: Readonly<DeviceData>): DeviceData {
     if (this.mainIndex.has(id)) {
       const deviceData = this.mainIndex.get(id);
-      const value = {...deviceData, ...data};
+      const value = { ...deviceData, ...data };
       this.mainIndex.set(id, Object.freeze(value));
       return value;
     }
@@ -206,10 +207,7 @@ export class HomeIndex {
         this.roomsIndex.set(element.id, element.data);
         break;
       case OBJECT_TYPE.THERMOSTAT:
-        this.thermostatsIndex.set(
-            element.id,
-            element.data as ThermostatDeviceData
-        );
+        this.thermostatsIndex.set(element.id, element.data as ThermostatDeviceData);
         break;
       case OBJECT_TYPE.BLIND:
         this.blindsIndex.set(element.id, element.data as BlindDeviceData);
@@ -228,7 +226,7 @@ export class HomeIndex {
     this.mainIndex.set(element.id, element.data);
 
     if (element.data.elements) {
-      element.data.elements.forEach(value => this.visitElement(value));
+      element.data.elements.forEach((value) => this.visitElement(value));
     }
   }
 }
