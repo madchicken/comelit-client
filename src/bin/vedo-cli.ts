@@ -9,7 +9,7 @@ interface ClientOptions {
 }
 
 const options: ClientOptions & any = yargs
-  .scriptName('vedo-cli')
+  .scriptName('vedo')
   .option('host', { alias: 'h', type: 'string', demandOption: true })
   .option('code', { alias: 'c', type: 'string', demandOption: true })
   .option('port', { alias: 'p', type: 'number', demandOption: false })
@@ -38,6 +38,12 @@ const options: ClientOptions & any = yargs
     },
     status: {
       describe: 'Get info about active zones',
+    },
+    exclude: {
+      describe: 'Exclude given zone',
+    },
+    include: {
+      describe: 'Include given zone',
     },
   })
   .demandCommand()
@@ -75,6 +81,12 @@ async function run() {
         }
         if (options.status) {
           await zoneStatus(uid);
+        }
+        if (options.include) {
+          await includeZone(uid, options.include);
+        }
+        if (options.exclude) {
+          await excludeZone(uid, options.exclude);
         }
         break;
       default:
@@ -129,6 +141,14 @@ async function armArea(uid: string, num: number = 32) {
 
 async function disarmArea(uid: string, num: number = 32) {
   return await client.disarm(uid, num);
+}
+
+async function includeZone(uid: any, include: number) {
+  return await client.includeZone(uid, include);
+}
+
+async function excludeZone(uid: any, include: number) {
+  return await client.excludeZone(uid, include);
 }
 
 run().then(() => {
