@@ -1,8 +1,15 @@
 #!/usr/bin/env node
 import yargs = require('yargs');
 import chalk from 'chalk';
-import {ACTION_TYPE, ClimaMode, ClimaOnOff, ComelitClient, ROOT_ID, ThermoSeason} from '../comelit-client';
-import {OBJECT_SUBTYPE, OFF, ON, STATUS_OFF, STATUS_ON, ThermostatDeviceData} from '../types';
+import {
+  ACTION_TYPE,
+  ClimaMode,
+  ClimaOnOff,
+  ComelitClient,
+  ROOT_ID,
+  ThermoSeason,
+} from '../comelit-client';
+import { OBJECT_SUBTYPE, OFF, ON, STATUS_OFF, STATUS_ON, ThermostatDeviceData } from '../types';
 
 const readline = require('readline');
 
@@ -36,14 +43,14 @@ const options: ClientOptions & any = yargs
       demandOption: true,
       default: 'admin',
     },
-    broker_username: {
+    hub_username: {
       description: 'Username to use to connect MQTT broker',
       alias: 'bu',
       type: 'string',
       demandOption: true,
       default: DEFAULT_BROKER_USER,
     },
-    broker_password: {
+    hub_password: {
       description: 'Password to use to connect MQTT broker',
       alias: 'bp',
       type: 'string',
@@ -353,7 +360,7 @@ async function listRooms() {
 async function listLights() {
   const homeIndex = await client.fetchHomeIndex();
   [...homeIndex.lightsIndex.values()].forEach(light => {
-    let subtype= 'Unknown light type';
+    let subtype = 'Unknown light type';
     switch (light.sub_type) {
       case OBJECT_SUBTYPE.DIGITAL_LIGHT:
         subtype = 'Digital light';
@@ -405,26 +412,33 @@ async function listShutters() {
 async function listClima() {
   const homeIndex = await client.fetchHomeIndex();
   [...homeIndex.thermostatsIndex.values()].forEach(clima => {
-      const auto_man = clima.auto_man;
-      const isOff = auto_man === ClimaMode.OFF_AUTO || auto_man === ClimaMode.OFF_MANUAL;
-      const isManual = auto_man === ClimaMode.OFF_MANUAL || auto_man === ClimaMode.MANUAL;
-      console.log(
-        chalk.green(
-          `${clima.objectId} - ${clima.descrizione}:\nThermostat status ${isOff ? 'OFF' : 'ON'}, ${
-            isManual ? 'manual mode' : 'auto mode'
-          }, ${clima.est_inv === ThermoSeason.WINTER ? 'winter' : 'summer'}, Temperature ${parseInt(
-            clima.temperatura
-          ) / 10}°, threshold ${parseInt(clima.soglia_attiva) / 10}°`
-        )
-      );
-      const humi_auto_man = clima.auto_man_umi;
-      const humi_isOff = humi_auto_man === ClimaMode.OFF_AUTO || humi_auto_man === ClimaMode.OFF_MANUAL;
-      const humi_isManual = humi_auto_man === ClimaMode.OFF_MANUAL || humi_auto_man === ClimaMode.MANUAL;
-      console.log(chalk.blue(`Dehumidifier status is ${humi_isOff ? 'OFF' : 'ON'}, ${
-        humi_isManual ? 'manual mode' : 'auto mode'
-      }, Humidity level ${parseInt(clima.umidita)}%, threshold ${clima.soglia_attiva_umi}%\nGeneral status is ${clima.status === '1' ? 'ON' : 'OFF'}\n`));
-    }
-  );
+    const auto_man = clima.auto_man;
+    const isOff = auto_man === ClimaMode.OFF_AUTO || auto_man === ClimaMode.OFF_MANUAL;
+    const isManual = auto_man === ClimaMode.OFF_MANUAL || auto_man === ClimaMode.MANUAL;
+    console.log(
+      chalk.green(
+        `${clima.objectId} - ${clima.descrizione}:\nThermostat status ${isOff ? 'OFF' : 'ON'}, ${
+          isManual ? 'manual mode' : 'auto mode'
+        }, ${clima.est_inv === ThermoSeason.WINTER ? 'winter' : 'summer'}, Temperature ${parseInt(
+          clima.temperatura
+        ) / 10}°, threshold ${parseInt(clima.soglia_attiva) / 10}°`
+      )
+    );
+    const humi_auto_man = clima.auto_man_umi;
+    const humi_isOff =
+      humi_auto_man === ClimaMode.OFF_AUTO || humi_auto_man === ClimaMode.OFF_MANUAL;
+    const humi_isManual =
+      humi_auto_man === ClimaMode.OFF_MANUAL || humi_auto_man === ClimaMode.MANUAL;
+    console.log(
+      chalk.blue(
+        `Dehumidifier status is ${humi_isOff ? 'OFF' : 'ON'}, ${
+          humi_isManual ? 'manual mode' : 'auto mode'
+        }, Humidity level ${parseInt(clima.umidita)}%, threshold ${
+          clima.soglia_attiva_umi
+        }%\nGeneral status is ${clima.status === '1' ? 'ON' : 'OFF'}\n`
+      )
+    );
+  });
 }
 
 async function toggleLight(index: string) {

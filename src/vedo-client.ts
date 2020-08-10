@@ -48,6 +48,7 @@ export interface ZoneStat extends LoginInfo {
 }
 
 export interface ZoneStatus {
+  index: number;
   description: string;
   open: boolean;
   excluded: boolean;
@@ -248,19 +249,18 @@ export class VedoClient {
     const zoneDesc = zones || (await doGet<ZoneDesc>(this.address, this.config.zone_desc, uid));
     const zoneStatus = await doGet<ZoneStat>(this.address, this.config.zone_stat, uid);
     const statuses = zoneStatus.status.split(',');
-    return zoneDesc.in_area
-      .reduce((activeZones, present, index) => {
-        if (present === 1) {
-          const stat = {
-            description: zoneDesc.description[index],
-          };
-          const status = statuses[index];
-          page_list.forEach((o) => (stat[o.hash] = (parseInt(status) & o.bit_mask) !== 0));
-          activeZones.push(stat);
-        }
-        return activeZones;
-      }, [])
-      .filter((zone) => !zone.excluded);
+    return zoneDesc.in_area.reduce((activeZones, present, index) => {
+      if (present === 1) {
+        const stat = {
+          index: index + 1,
+          description: zoneDesc.description[index],
+        };
+        const status = statuses[index];
+        page_list.forEach(o => (stat[o.hash] = (parseInt(status, 16) & o.bit_mask) !== 0));
+        activeZones.push(stat);
+      }
+      return activeZones;
+    }, []);
   }
 
   async findActiveAreas(uid: string, areas?: AreaDesc): Promise<AlarmArea[]> {
@@ -280,13 +280,13 @@ export class VedoClient {
         }
         return null;
       })
-      .filter((a) => a !== null);
+      .filter(a => a !== null);
   }
 
-  async arm(uid: string, area: number) {
+  async arm(uid: string, area: number, force: boolean = true) {
     const resp = await axios.get<any>(`${this.address}${this.config.action}`, {
       params: {
-        force: '1',
+        force: force ? '1' : '0',
         vedo: '1',
         tot: area,
         _: new Date().getTime(),
@@ -321,6 +321,44 @@ export class VedoClient {
       return resp.data;
     }
     throw new Error(`Unable to disarm alarm: ${resp.statusText}`);
+  }
+
+  async excludeZone(uid: string, zoneIndex: number) {
+    const resp = await axios.get<any>(`${this.address}${this.config.action}`, {
+      params: {
+        vedo: '1',
+        excl: zoneIndex,
+        _: new Date().getTime(),
+      },
+      headers: {
+        Cookie: uid,
+        'X-Requested-With': 'XMLHttpRequest',
+        Accept: '*/*',
+      },
+    });
+    if (resp.status === 200) {
+      return resp.data;
+    }
+    throw new Error(`Unable to exclude zone: ${resp.statusText}`);
+  }
+
+  async includeZone(uid: string, zoneIndex: number) {
+    const resp = await axios.get<any>(`${this.address}${this.config.action}`, {
+      params: {
+        vedo: '1',
+        incl: zoneIndex,
+        _: new Date().getTime(),
+      },
+      headers: {
+        Cookie: uid,
+        'X-Requested-With': 'XMLHttpRequest',
+        Accept: '*/*',
+      },
+    });
+    if (resp.status === 200) {
+      return resp.data;
+    }
+    throw new Error(`Unable to exclude zone: ${resp.statusText}`);
   }
 
   async shutdown(uid: string) {
