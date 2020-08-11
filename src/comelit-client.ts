@@ -392,7 +392,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     // Register to incoming messages
     await this.subscribeTopic(this.rxTopic, this.handleIncomingMessage.bind(this));
     this.setTimeout(DEFAULT_TIMEOUT);
-    this.props.agent_id = await this.retriveAgentId();
+    this.props.agent_id = await this.retrieveAgentId();
     this.logger.info(`...done: client agent id is ${this.props.agent_id}`);
     return this.props.client;
   }
@@ -574,7 +574,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
       : `${CLIENT_ID_PREFIX}_${generateUUID(`${Math.random()}`).toUpperCase()}`;
   }
 
-  private async retriveAgentId(): Promise<number> {
+  private async retrieveAgentId(): Promise<number> {
     this.logger.info('Retrieving agent id...');
     const packet: MqttMessage = {
       req_type: REQUEST_TYPE.ANNOUNCE,
@@ -584,8 +584,8 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     };
     const msg = await this.publish(packet);
     const agentId = msg.out_data[0].agent_id;
-    const descrizione = msg.out_data[0].descrizione;
-    this.logger.info(`Logged into Comelit hub: ${descrizione}`);
+    const desc = msg.out_data[0].descrizione;
+    this.logger.info(`Logged into Comelit hub: ${desc}`);
     return agentId;
   }
 
@@ -593,7 +593,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     this.logger.info(`Sending message to HUB ${JSON.stringify(packet)}`);
     try {
       await this.props.client.publish(this.txTopic, JSON.stringify(packet));
-      return await this.enqueue(packet);
+      return this.enqueue(packet);
     } catch (response) {
       if (response.req_result === 1 && response.message === 'invalid token') {
         await this.login(); // relogin and override invalid token
