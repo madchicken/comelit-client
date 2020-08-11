@@ -6,6 +6,7 @@ import {
   ClimaMode,
   ClimaOnOff,
   ComelitClient,
+  ComelitDevice,
   ROOT_ID,
   ThermoSeason,
 } from '../comelit-client';
@@ -70,13 +71,13 @@ const options: ClientOptions & any = yargs
       alias: 'h',
       description: 'broker host or IP',
       type: 'string',
-      demandOption: true,
+      demandOption: false,
     },
     id: { type: 'string', demandOption: true },
     detail: { type: 'number', demandOption: false, default: 1 },
   })
   .command('params', 'Get HUB parameters', {
-    host: { type: 'string', demandOption: true },
+    host: { type: 'string', demandOption: false },
     username: {
       alias: 'u',
       type: 'string',
@@ -108,7 +109,7 @@ const options: ClientOptions & any = yargs
       alias: 'h',
       description: 'broker host or IP',
       type: 'string',
-      demandOption: true,
+      demandOption: false,
     },
     id: { type: 'string', demandOption: true },
     type: { type: 'number', demandOption: true, default: ACTION_TYPE.SET },
@@ -119,7 +120,7 @@ const options: ClientOptions & any = yargs
       alias: 'h',
       description: 'broker host or IP',
       type: 'string',
-      demandOption: true,
+      demandOption: false,
     },
     id: {
       description: 'ID of the parent room/zone',
@@ -132,7 +133,7 @@ const options: ClientOptions & any = yargs
       alias: 'h',
       description: 'broker host or IP',
       type: 'string',
-      demandOption: true,
+      demandOption: false,
     },
   })
   .command('lights', 'Get info about house lights', {
@@ -140,7 +141,7 @@ const options: ClientOptions & any = yargs
       alias: 'h',
       description: 'broker host or IP',
       type: 'string',
-      demandOption: true,
+      demandOption: false,
     },
     toggle: {
       describe: 'Turn on/off a light',
@@ -152,7 +153,7 @@ const options: ClientOptions & any = yargs
       alias: 'h',
       description: 'broker host or IP',
       type: 'string',
-      demandOption: true,
+      demandOption: false,
     },
     toggle: {
       describe: 'Turn on/off an outlets',
@@ -164,7 +165,7 @@ const options: ClientOptions & any = yargs
       alias: 'h',
       description: 'broker host or IP',
       type: 'string',
-      demandOption: true,
+      demandOption: false,
     },
     toggle: {
       describe: 'Open/close a shutter',
@@ -176,7 +177,7 @@ const options: ClientOptions & any = yargs
       alias: 'h',
       description: 'broker host or IP',
       type: 'string',
-      demandOption: true,
+      demandOption: false,
     },
     toggle: {
       describe: 'Turn on/off a thermostat',
@@ -197,7 +198,7 @@ const options: ClientOptions & any = yargs
       alias: 'h',
       description: 'broker host or IP',
       type: 'string',
-      demandOption: true,
+      demandOption: false,
     },
     toggle: {
       alias: 't',
@@ -218,7 +219,7 @@ const options: ClientOptions & any = yargs
         alias: 'h',
         description: 'broker host or IP',
         type: 'string',
-        demandOption: true,
+        demandOption: false,
       },
       id: {
         type: 'string',
@@ -243,7 +244,12 @@ async function run() {
   console.log(chalk.green(`Executing command ${command}`));
   try {
     if (command === 'scan') {
-      await scan();
+      const devices = await scan();
+      devices.forEach(device =>
+        console.log(
+          `Found hardware ${device.hwID} MAC ${device.macAddress}, app ${device.appID} version ${device.appVersion}, system id ${device.systemID}, ${device.model} - ${device.description} at IP ${device.ip}`
+        )
+      );
     } else {
       await client.init(options);
       await client.login();
@@ -558,9 +564,9 @@ async function setHumidifierTemperature(index: string, temperature: string) {
   }
 }
 
-async function scan() {
+async function scan(): Promise<ComelitDevice[]> {
   console.log(chalk.green('Scanning local network for HUB...'));
-  await client.scan();
+  return await client.scan();
 }
 
 async function listen(id?: string, topic?: string) {

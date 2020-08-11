@@ -1,8 +1,8 @@
-import MQTT, {AsyncMqttClient} from 'async-mqtt';
-import {DeferredMessage, PromiseBasedQueue} from './promise-queue';
-import {generateUUID} from './utils';
-import dgram, {RemoteInfo} from 'dgram';
-import {AddressInfo} from 'net';
+import MQTT, { AsyncMqttClient } from 'async-mqtt';
+import { DeferredMessage, PromiseBasedQueue } from './promise-queue';
+import { generateUUID } from './utils';
+import dgram, { RemoteInfo } from 'dgram';
+import { AddressInfo } from 'net';
 import { ConsoleLike, DeviceData, HomeIndex } from './types';
 import Timeout = NodeJS.Timeout;
 
@@ -136,7 +136,7 @@ function deserializeMessage(message: any): MqttIncomingMessage {
   return parsed as MqttIncomingMessage;
 }
 
-function bytesToHex(byteArray: Buffer): String {
+function bytesToHex(byteArray: Buffer): string {
   return byteArray.reduce((output, elem) => output + ('0' + elem.toString(16)).slice(-2), '');
 }
 
@@ -144,7 +144,7 @@ function bytesToHex(byteArray: Buffer): String {
 const DEFAULT_TIMEOUT = 5000;
 
 export interface ClientConfig {
-  host: string;
+  host?: string;
   port?: number;
   username?: string;
   password?: string;
@@ -154,6 +154,18 @@ export interface HUBClientConfig extends ClientConfig {
   hub_username?: string;
   hub_password?: string;
   clientId?: string;
+}
+
+export interface ComelitDevice {
+  modelID: string;
+  model?: string;
+  description: string;
+  ip: string;
+  macAddress: string;
+  hwID: string;
+  appID: string;
+  appVersion: string;
+  systemID: string;
 }
 
 export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMessage> {
@@ -179,6 +191,13 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     };
     this.onUpdate = onUpdate;
     this.logger = log || console;
+  }
+
+  private static evalResponse(response: MqttIncomingMessage): Promise<boolean> {
+    if (response.req_result === 0) {
+      return Promise.resolve(true);
+    }
+    return Promise.reject(new Error(response.message));
   }
 
   processResponse(
@@ -218,10 +237,12 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     return !!this.props.sessiontoken;
   }
 
-  scan(): Promise<void> {
+  scan(): Promise<ComelitDevice[]> {
     return new Promise(resolve => {
+      const devices = [];
       const server = dgram.createSocket('udp4');
       let timeout: Timeout;
+
       function sendScan() {
         const message = Buffer.alloc(12);
         message.write('SCAN');
@@ -238,34 +259,40 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
 
       server.bind(() => {
         server.setBroadcast(true);
-        timeout = setInterval(sendScan, 3000);
+        sendScan();
+        timeout = setTimeout(() => {
+          resolve(devices);
+        }, 1000);
       });
 
       server.on('listening', () => {
         const address: AddressInfo = server.address() as AddressInfo;
-        this.logger.info(`server listening ${address.address}:${address.port}`);
+        this.logger.debug(`Server listening ${address.address}:${address.port}`);
       });
 
       server.on('error', err => {
-        this.logger.info(`server error:\n${err.stack}`);
+        this.logger.error(`server error:\n${err.stack}`);
         clearInterval(timeout);
         server.close();
-        resolve();
+        resolve(devices);
       });
 
       server.on('message', (msg, rinfo: RemoteInfo) => {
         if (msg.toString().startsWith('here')) {
           sendInfo(rinfo);
         } else {
-          const macAddress = bytesToHex(msg.subarray(14, 20));
-          const hwID = msg.subarray(20, 24).toString();
-          const appID = msg.subarray(24, 28).toString();
-          const appVersion = msg.subarray(32, 112).toString();
-          const systemID = msg.subarray(112, 116).toString();
-          const description = msg.subarray(116, 152).toString();
-          const modelID = msg.subarray(156, 160).toString();
-          let model = modelID;
-          switch (modelID) {
+          const device: ComelitDevice = {
+            macAddress: bytesToHex(msg.subarray(14, 20)),
+            hwID: msg.subarray(20, 24).toString(),
+            appID: msg.subarray(24, 28).toString(),
+            appVersion: msg.subarray(32, 112).toString(),
+            systemID: msg.subarray(112, 116).toString(),
+            description: msg.subarray(116, 152).toString(),
+            modelID: msg.subarray(156, 160).toString(),
+            ip: rinfo.address,
+          };
+          let model = device.modelID;
+          switch (device.modelID) {
             case 'Extd':
               model = '1456 - Gateway';
               break;
@@ -291,9 +318,8 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
               model = 'Home server';
               break;
           }
-          this.logger.info(
-            `Found hardware ${hwID} MAC ${macAddress}, app ${appID} version ${appVersion}, system id ${systemID}, ${model} - ${description} at IP ${rinfo.address}`
-          );
+          device.model = model;
+          devices.push(device);
         }
       });
     });
@@ -325,11 +351,30 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
   }
 
   async init(config: HUBClientConfig): Promise<AsyncMqttClient> {
-    const broker = config.host.indexOf('://') !== -1 ? config.host : `mqtt://${config.host}`;
+    let broker;
+    let macAddress;
+    if (config.host) {
+      broker = config.host.indexOf('://') !== -1 ? config.host : `mqtt://${config.host}`;
+      macAddress = await this.getMACAddress(config);
+    } else {
+      this.logger.info('Searching for Comelit HUB on LAN...');
+      const devices = await this.scan();
+      const hub = devices.find(device => device.appID === 'HSrv');
+      if (hub) {
+        this.logger.info(
+          `Found Comelit HUB at ${hub.ip} (MAC ${hub.macAddress}, Name ${hub.description})`
+        );
+        broker = `mqtt://${hub.ip}`;
+        macAddress = hub.macAddress.toUpperCase();
+      } else {
+        throw new Error(
+          'Unable to find Comelit HUB on local network. If you know the IP, please use it in the configuration'
+        );
+      }
+    }
     this.username = config.username;
     this.password = config.password;
     this.clientId = this.getOrCreateClientId(config.clientId);
-    const macAddress = await this.getMACAddress(config);
     this.rxTopic = `${CLIENT_ID_PREFIX}/${macAddress}/tx/${this.clientId}`;
     this.txTopic = `${CLIENT_ID_PREFIX}/${macAddress}/rx/${this.clientId}`;
     this.logger.info(
@@ -347,19 +392,9 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     // Register to incoming messages
     await this.subscribeTopic(this.rxTopic, this.handleIncomingMessage.bind(this));
     this.setTimeout(DEFAULT_TIMEOUT);
-    this.props.agent_id = await this.retriveAgentId();
+    this.props.agent_id = await this.retrieveAgentId();
     this.logger.info(`...done: client agent id is ${this.props.agent_id}`);
     return this.props.client;
-  }
-
-  private getOrCreateClientId(clientId: string): string {
-    if (this.clientId) {
-      // We already generated a client id, reuse it
-      return this.clientId;
-    }
-    return clientId
-      ? `${CLIENT_ID_PREFIX}_${clientId}`
-      : `${CLIENT_ID_PREFIX}_${generateUUID(`${Math.random()}`).toUpperCase()}`;
   }
 
   async subscribeTopic(topic: string, handler: (topic: string, message: any) => void) {
@@ -384,21 +419,6 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     this.props.sessiontoken = null;
     this.props.agent_id = null;
     this.logger.info('Comelit client disconnected');
-  }
-
-  private async retriveAgentId(): Promise<number> {
-    this.logger.info('Retrieving agent id...');
-    const packet: MqttMessage = {
-      req_type: REQUEST_TYPE.ANNOUNCE,
-      seq_id: this.props.index++,
-      req_sub_type: REQUEST_SUB_TYPE.NONE,
-      agent_type: 0,
-    };
-    const msg = await this.publish(packet);
-    const agentId = msg.out_data[0].agent_id;
-    const descrizione = msg.out_data[0].descrizione;
-    this.logger.info(`Logged into Comelit hub: ${descrizione}`);
-    return agentId;
   }
 
   async login(): Promise<boolean> {
@@ -539,23 +559,41 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     return ComelitClient.evalResponse(response).then(value => value);
   }
 
-  private static evalResponse(response: MqttIncomingMessage): Promise<boolean> {
-    if (response.req_result === 0) {
-      return Promise.resolve(true);
-    }
-    return Promise.reject(new Error(response.message));
-  }
-
   mapHome(home: DeviceData): HomeIndex {
     this.homeIndex = new HomeIndex(home);
     return this.homeIndex;
+  }
+
+  private getOrCreateClientId(clientId: string): string {
+    if (this.clientId) {
+      // We already generated a client id, reuse it
+      return this.clientId;
+    }
+    return clientId
+      ? `${CLIENT_ID_PREFIX}_${clientId}`
+      : `${CLIENT_ID_PREFIX}_${generateUUID(`${Math.random()}`).toUpperCase()}`;
+  }
+
+  private async retrieveAgentId(): Promise<number> {
+    this.logger.info('Retrieving agent id...');
+    const packet: MqttMessage = {
+      req_type: REQUEST_TYPE.ANNOUNCE,
+      seq_id: this.props.index++,
+      req_sub_type: REQUEST_SUB_TYPE.NONE,
+      agent_type: 0,
+    };
+    const msg = await this.publish(packet);
+    const agentId = msg.out_data[0].agent_id;
+    const desc = msg.out_data[0].descrizione;
+    this.logger.info(`Logged into Comelit hub: ${desc}`);
+    return agentId;
   }
 
   private async publish(packet: MqttMessage): Promise<MqttIncomingMessage> {
     this.logger.info(`Sending message to HUB ${JSON.stringify(packet)}`);
     try {
       await this.props.client.publish(this.txTopic, JSON.stringify(packet));
-      return await this.enqueue(packet);
+      return this.enqueue(packet);
     } catch (response) {
       if (response.req_result === 1 && response.message === 'invalid token') {
         await this.login(); // relogin and override invalid token

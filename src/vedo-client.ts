@@ -171,7 +171,7 @@ export class VedoClient {
     if (uid === null) {
       throw new Error(`Cannot login after ${retry} retries`);
     } else {
-      this.logger.log(`Logged with token ${uid}`);
+      this.logger.debug(`Logged with token ${uid}`);
       return uid;
     }
   }
