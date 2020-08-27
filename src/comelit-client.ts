@@ -90,6 +90,7 @@ export enum ObjectStatus {
   OFF = 0,
   ON = 1,
   IDLE = 2,
+  ON_DEHUMIDIFY = 4,
   UP = 7,
   DOWN = 8,
   OPEN = 9,
