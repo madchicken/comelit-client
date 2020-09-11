@@ -10,7 +10,7 @@ import {
   ROOT_ID,
   ThermoSeason,
 } from '../comelit-client';
-import { OBJECT_SUBTYPE, OFF, ON, STATUS_OFF, STATUS_ON, ThermostatDeviceData } from '../types';
+import { DeviceData, OFF, ON, STATUS_OFF, STATUS_ON, ThermostatDeviceData } from '../types';
 
 const readline = require('readline');
 
@@ -272,9 +272,14 @@ async function run() {
           break;
         case 'lights':
           if (options.toggle !== undefined) {
+            if (options.toggle === 'all') {
+              await listLights(light => {
+                toggleLight(light.objectId);
+              });
+            }
             await toggleLight(options.toggle);
           } else {
-            await listLights();
+            await listLights(printObj);
           }
           break;
         case 'outlets':
@@ -363,29 +368,18 @@ async function listRooms() {
   });
 }
 
-async function listLights() {
+function printObj(obj: DeviceData) {
+  console.log(
+    chalk.green(
+      `${obj.objectId} - ${obj.descrizione} (status ${obj.status === STATUS_ON ? 'ON' : 'OFF'}`
+    )
+  );
+}
+
+async function listLights(fn: (obj: DeviceData) => void) {
   const homeIndex = await client.fetchHomeIndex();
   [...homeIndex.lightsIndex.values()].forEach(light => {
-    let subtype = 'Unknown light type';
-    switch (light.sub_type) {
-      case OBJECT_SUBTYPE.DIGITAL_LIGHT:
-        subtype = 'Digital light';
-        break;
-      case OBJECT_SUBTYPE.TEMPORIZED_LIGHT:
-        subtype = 'Temporized light';
-        break;
-      case OBJECT_SUBTYPE.RGB_LIGHT:
-        subtype = 'RGB light';
-        break;
-    }
-
-    console.log(
-      chalk.green(
-        `${light.objectId} - ${light.descrizione} (status ${
-          light.status === STATUS_ON ? 'ON' : 'OFF'
-        } (${subtype})`
-      )
-    );
+    fn(light);
   });
 }
 
