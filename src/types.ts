@@ -226,7 +226,7 @@ export class HomeIndex {
     this.mainIndex.set(element.id, element.data);
 
     if (element.data.elements) {
-      element.data.elements.forEach((value) => this.visitElement(value));
+      element.data.elements.forEach(value => this.visitElement(value));
     }
   }
 }

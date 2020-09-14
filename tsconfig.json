@@ -10,7 +10,8 @@
     "downlevelIteration": true,
     "outDir": "dist",
     "declaration": true,
-    "declarationMap": true
+    "declarationMap": true,
+    "sourceMap": true
   },
   "lib": ["esnext"],
   "include": ["src"],

@@ -1,6 +1,6 @@
 import MQTT, { AsyncMqttClient } from 'async-mqtt';
 import { DeferredMessage, PromiseBasedQueue } from './promise-queue';
-import { generateUUID } from './utils';
+import { generateUUID, sleep } from './utils';
 import dgram, { RemoteInfo } from 'dgram';
 import { AddressInfo } from 'net';
 import { ConsoleLike, DeviceData, HomeIndex } from './types';
@@ -90,6 +90,7 @@ export enum ObjectStatus {
   OFF = 0,
   ON = 1,
   IDLE = 2,
+  ON_DEHUMIDIFY = 4,
   UP = 7,
   DOWN = 8,
   OPEN = 9,
@@ -168,6 +169,8 @@ export interface ComelitDevice {
   systemID: string;
 }
 
+export const DEFAULT_SEND_DELAY = 500;
+
 export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMessage> {
   private readonly props: ComelitProps;
   private homeIndex: HomeIndex;
@@ -193,29 +196,24 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     this.logger = log || console;
   }
 
-  private static evalResponse(response: MqttIncomingMessage): Promise<boolean> {
+  private static evalResponse(response: MqttIncomingMessage): boolean {
     if (response.req_result === 0) {
-      return Promise.resolve(true);
+      console.debug(`Resolving response ${response.seq_id}`);
+      return true;
     }
-    return Promise.reject(new Error(response.message));
+    console.error(response.message);
+    throw new Error(response.message);
   }
 
-  processResponse(
-    messages: DeferredMessage<MqttMessage, MqttIncomingMessage>[],
-    response: MqttIncomingMessage
-  ): boolean {
-    const deferredMqttMessage = response.seq_id
-      ? messages.find(
-          message =>
-            message.message.seq_id == response.seq_id &&
-            message.message.req_type == response.req_type
-        )
-      : null;
+  consume(response: MqttIncomingMessage): boolean {
+    const deferredMqttMessage = response.seq_id ? this.findInQueue(response) : null;
     if (deferredMqttMessage) {
-      messages.splice(messages.indexOf(deferredMqttMessage));
+      this.queuedMessages.splice(this.queuedMessages.indexOf(deferredMqttMessage), 1);
       if (response.req_result === 0) {
+        this.logger.debug(`Resolving promise ${response.seq_id}:`, response);
         deferredMqttMessage.promise.resolve(response);
       } else {
+        this.logger.error(`Rejecting promise ${response.seq_id}:`, response);
         deferredMqttMessage.promise.reject(response);
       }
       return true;
@@ -231,6 +229,12 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
       }
     }
     return false;
+  }
+
+  findInQueue(message: MqttIncomingMessage): DeferredMessage<MqttMessage, MqttIncomingMessage> {
+    return this.queuedMessages.find(
+      m => m.message.seq_id == message.seq_id && m.message.req_type == message.req_type
+    );
   }
 
   isLogged(): boolean {
@@ -375,8 +379,8 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     this.username = config.username;
     this.password = config.password;
     this.clientId = this.getOrCreateClientId(config.clientId);
-    this.rxTopic = `${CLIENT_ID_PREFIX}/${macAddress}/tx/${this.clientId}`;
-    this.txTopic = `${CLIENT_ID_PREFIX}/${macAddress}/rx/${this.clientId}`;
+    this.rxTopic = `${CLIENT_ID_PREFIX}/${macAddress}/rx/${this.clientId}`;
+    this.txTopic = `${CLIENT_ID_PREFIX}/${macAddress}/tx/${this.clientId}`;
     this.logger.info(
       `Connecting to Comelit HUB at ${broker} with clientID ${
         this.clientId
@@ -390,7 +394,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
       rejectUnauthorized: false,
     });
     // Register to incoming messages
-    await this.subscribeTopic(this.rxTopic, this.handleIncomingMessage.bind(this));
+    await this.subscribeTopic(this.txTopic, this.handleIncomingMessage.bind(this));
     this.setTimeout(DEFAULT_TIMEOUT);
     this.props.agent_id = await this.retrieveAgentId();
     this.logger.info(`...done: client agent id is ${this.props.agent_id}`);
@@ -435,8 +439,8 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
       password: this.password,
     };
     try {
-      const msg = await this.publish(packet);
-      this.props.sessiontoken = msg.sessiontoken;
+      const response = await this.publish(packet);
+      this.props.sessiontoken = response.sessiontoken;
       return true;
     } catch (e) {
       console.error(e);
@@ -455,7 +459,8 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
       sessiontoken: this.props.sessiontoken,
     };
     const response = await this.publish(packet);
-    return ComelitClient.evalResponse(response).then(() => [...response.params_data]);
+    ComelitClient.evalResponse(response);
+    return [...response.params_data];
   }
 
   async subscribeObject(id: string): Promise<boolean> {
@@ -467,7 +472,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
       obj_id: id,
     };
     const response = await this.publish(packet);
-    return ComelitClient.evalResponse(response).then(value => value);
+    return ComelitClient.evalResponse(response);
   }
 
   async ping(): Promise<boolean> {
@@ -478,7 +483,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
       sessiontoken: this.props.sessiontoken,
     };
     const response = await this.publish(packet);
-    return ComelitClient.evalResponse(response).then(value => value);
+    return ComelitClient.evalResponse(response);
   }
 
   async device(objId: string = ROOT_ID, detailLevel?: number): Promise<DeviceData> {
@@ -491,7 +496,8 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
       detail_level: detailLevel || 1,
     };
     const response = await this.publish(packet);
-    return ComelitClient.evalResponse(response).then(() => response.out_data[0] as DeviceData);
+    ComelitClient.evalResponse(response);
+    return response.out_data[0] as DeviceData;
   }
 
   async zones(objId: string): Promise<DeviceData> {
@@ -505,7 +511,8 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
       detail_level: 1,
     };
     const response = await this.publish(packet);
-    return ComelitClient.evalResponse(response).then(() => response.out_data[0] as DeviceData);
+    ComelitClient.evalResponse(response);
+    return response.out_data[0] as DeviceData;
   }
 
   async fetchHomeIndex(): Promise<HomeIndex> {
@@ -555,8 +562,9 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
       obj_id: id,
       act_params: [value],
     };
+    await sleep(DEFAULT_SEND_DELAY);
     const response = await this.publish(packet);
-    return ComelitClient.evalResponse(response).then(value => value);
+    return ComelitClient.evalResponse(response);
   }
 
   mapHome(home: DeviceData): HomeIndex {
@@ -589,23 +597,27 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     return agentId;
   }
 
-  private async publish(packet: MqttMessage): Promise<MqttIncomingMessage> {
+  private publish(packet: MqttMessage): Promise<MqttIncomingMessage> {
     this.logger.info(`Sending message to HUB ${JSON.stringify(packet)}`);
-    try {
-      await this.props.client.publish(this.txTopic, JSON.stringify(packet));
-      return this.enqueue(packet);
-    } catch (response) {
-      if (response.req_result === 1 && response.message === 'invalid token') {
-        await this.login(); // relogin and override invalid token
-        return this.publish(packet); // resend packet
-      }
-      throw response;
-    }
+    return this.props.client
+      .publish(this.rxTopic, JSON.stringify(packet))
+      .then(() => this.enqueue(packet))
+      .catch(response => {
+        this.logger.error('Error while sending packet');
+        if (response.req_result === 1 && response.message === 'invalid token') {
+          return this.login().then(() => this.publish(packet)); // relogin and override invalid token
+        }
+        if (response.message.indexOf('Timeout') > 0) {
+          return this.publish(packet);
+        }
+        throw response;
+      });
   }
 
   private handleIncomingMessage(topic: string, message: any) {
     const msg: MqttIncomingMessage = deserializeMessage(message);
-    if (topic === this.rxTopic) {
+    this.logger.debug(`Received message with id ${msg.seq_id}`);
+    if (topic === this.txTopic) {
       this.processQueue(msg);
     } else {
       console.error(`Unknown topic ${topic}, message ${msg.toString()}`);
