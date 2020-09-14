@@ -11,6 +11,7 @@ import {
   ThermoSeason,
 } from '../comelit-client';
 import { DeviceData, OFF, ON, STATUS_OFF, STATUS_ON, ThermostatDeviceData } from '../types';
+import { sleep } from '../utils';
 
 const readline = require('readline');
 
@@ -254,6 +255,7 @@ async function run() {
       await client.init(options);
       await client.login();
 
+      const toggle: string = options.toggle;
       switch (command) {
         case 'info':
           await info(options.id as string, options.detail as number);
@@ -271,50 +273,58 @@ async function run() {
           await listRooms();
           break;
         case 'lights':
-          if (options.toggle !== undefined) {
-            if (options.toggle === 'all') {
-              await listLights(light => {
-                toggleLight(light.objectId);
-              });
+          if (toggle !== undefined) {
+            switch (toggle) {
+              case 'all-off':
+                await listLights(async light => {
+                  return await client.toggleDeviceStatus(light.id, OFF);
+                });
+                break;
+              case 'all-on':
+                await listLights(async light => {
+                  return await client.toggleDeviceStatus(light.id, ON);
+                });
+                break;
+              default:
+                await Promise.all(toggle.split(',').map(async objID => toggleLight(objID.trim())));
             }
-            await toggleLight(options.toggle);
           } else {
             await listLights(printObj);
           }
           break;
         case 'outlets':
-          if (options.toggle !== undefined) {
-            await toggleOutlets(options.toggle);
+          if (toggle !== undefined) {
+            await toggleOutlets(toggle);
           } else {
             await listOutlets();
           }
           break;
         case 'shutters':
-          if (options.toggle !== undefined) {
-            await toggleShutter(options.toggle);
+          if (toggle !== undefined) {
+            await toggleShutter(toggle);
           } else {
             await listShutters();
           }
           break;
         case 'clima':
-          if (options.toggle !== undefined) {
+          if (toggle !== undefined) {
             if (options.temp !== undefined) {
-              await setThermostatTemperature(options.toggle, options.temp);
+              await setThermostatTemperature(toggle, options.temp);
             } else if (options.season !== undefined) {
-              await switchThermostatSeason(options.toggle, options.season);
+              await switchThermostatSeason(toggle, options.season);
             } else {
-              await switchThermostatState(options.toggle);
+              await switchThermostatState(toggle);
             }
           } else {
             await listClima();
           }
           break;
         case 'umi':
-          if (options.toggle !== undefined) {
+          if (toggle !== undefined) {
             if (options.perc !== undefined) {
-              await setHumidifierTemperature(options.toggle, options.temp);
+              await setHumidifierTemperature(toggle, options.temp);
             } else {
-              await switchHumidifierState(options.toggle);
+              await switchHumidifierState(toggle);
             }
           } else {
             await listClima();
@@ -371,15 +381,15 @@ async function listRooms() {
 function printObj(obj: DeviceData) {
   console.log(
     chalk.green(
-      `${obj.objectId} - ${obj.descrizione} (status ${obj.status === STATUS_ON ? 'ON' : 'OFF'}`
+      `${obj.objectId} - ${obj.descrizione} (status ${obj.status === STATUS_ON ? 'ON' : 'OFF'})`
     )
   );
 }
 
 async function listLights(fn: (obj: DeviceData) => void) {
   const homeIndex = await client.fetchHomeIndex();
-  [...homeIndex.lightsIndex.values()].forEach(light => {
-    fn(light);
+  return [...homeIndex.lightsIndex.values()].forEach(light => {
+    return fn(light);
   });
 }
 
@@ -442,13 +452,12 @@ async function listClima() {
 }
 
 async function toggleLight(index: string) {
-  const homeIndex = await client.fetchHomeIndex();
-  const lightDeviceData = homeIndex.get(index);
+  const lightDeviceData = await client.device(index);
   if (lightDeviceData) {
     if (lightDeviceData.status === STATUS_OFF) {
-      await client.toggleDeviceStatus(index, ON);
+      return client.toggleDeviceStatus(index, ON);
     } else {
-      await client.toggleDeviceStatus(index, OFF);
+      return client.toggleDeviceStatus(index, OFF);
     }
   } else {
     console.log(chalk.red('Selected light does not exists'));

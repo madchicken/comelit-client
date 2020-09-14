@@ -21,14 +21,14 @@ export interface DeferredMessage<M, R> {
 }
 
 export abstract class PromiseBasedQueue<M, R> implements Queue<M, R> {
-  private readonly queuedMessages: DeferredMessage<M, R>[];
+  protected readonly queuedMessages: DeferredMessage<M, R>[];
   private timeout: Timeout;
 
   protected constructor() {
     this.queuedMessages = [];
   }
 
-  abstract processResponse(messages: DeferredMessage<M, R>[], response: R): boolean;
+  abstract consume(message: R): boolean;
 
   setTimeout(timeout: number) {
     if (timeout && timeout > 0) {
@@ -59,14 +59,16 @@ export abstract class PromiseBasedQueue<M, R> implements Queue<M, R> {
 
   flush(shutdown?: boolean): void {
     if (shutdown) {
-      this.queuedMessages.forEach((value) => value.promise.reject(new Error('Shutting down')));
+      this.queuedMessages.forEach(value => value.promise.reject(new Error('Shutting down')));
     }
     this.queuedMessages.length = 0;
   }
 
   processQueue(response: R) {
-    if (this.processResponse(this.queuedMessages, response)) {
+    if (this.consume(response)) {
       console.log(`Message processed. Message queue size is now ${this.queuedMessages.length}`);
+    } else {
+      console.error('Received message could not be processed', response);
     }
   }
 
