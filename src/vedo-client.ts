@@ -250,7 +250,7 @@ export class VedoClient {
     const zoneStatus = await doGet<ZoneStat>(this.address, this.config.zone_stat, uid);
     const statuses = zoneStatus.status.split(',');
     return zoneDesc.in_area.reduce((activeZones, present, index) => {
-      if (present === 1) {
+      if (present !== 0) {
         const stat = {
           index: index + 1,
           description: zoneDesc.description[index],
