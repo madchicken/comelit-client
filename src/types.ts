@@ -175,6 +175,7 @@ export class HomeIndex {
     string,
     SupplierDeviceData
   >();
+  public readonly unknownIndex: DeviceIndex = new Map<string, DeviceData>();
 
   public readonly mainIndex: DeviceIndex = new Map<string, Readonly<DeviceData>>();
 
@@ -218,6 +219,8 @@ export class HomeIndex {
       case OBJECT_TYPE.POWER_SUPPLIER:
         this.supplierIndex.set(element.id, element.data as SupplierDeviceData);
         break;
+      default:
+        this.unknownIndex.set(element.id, element.data);
     }
 
     if (this.mainIndex.has(element.id)) {
