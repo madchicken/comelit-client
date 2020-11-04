@@ -26,6 +26,11 @@ export interface DeviceInfo {
   data: DeviceData;
 }
 
+export interface OtherDeviceData extends DeviceData {
+  powerst: string;
+  tempo_uscita: string;
+}
+
 export interface LightDeviceData extends DeviceData {}
 
 export interface BlindDeviceData extends DeviceData {
@@ -134,6 +139,7 @@ export interface SupplierDeviceData extends DeviceData {
 export type DeviceIndex<T = DeviceData> = Map<string, T>;
 
 export enum OBJECT_TYPE {
+  OTHER = 1,
   BLIND = 2,
   LIGHT = 3,
   THERMOSTAT = 9,
@@ -148,6 +154,8 @@ export enum OBJECT_SUBTYPE {
   RGB_LIGHT = 2,
   TEMPORIZED_LIGHT = 3,
   DIMMER_LIGHT = 4,
+  OTHER_DIGIT = 5,
+  OTHER_TMP = 6,
   ELECTRIC_BLIND = 7,
   CLIMA_TERM = 12,
   GENERIC_ZONE = 13,
@@ -163,6 +171,7 @@ export const STATUS_ON = '1';
 export const STATUS_OFF = '0';
 
 export class HomeIndex {
+  public readonly othersIndex: DeviceIndex<OtherDeviceData> = new Map<string, OtherDeviceData>();
   public readonly lightsIndex: DeviceIndex<LightDeviceData> = new Map<string, LightDeviceData>();
   public readonly roomsIndex: DeviceIndex = new Map() as DeviceIndex;
   public readonly thermostatsIndex: DeviceIndex<ThermostatDeviceData> = new Map<
@@ -201,6 +210,9 @@ export class HomeIndex {
 
   private visitElement(element: DeviceInfo) {
     switch (element.data.type) {
+      case OBJECT_TYPE.OTHER:
+        this.othersIndex.set(element.id, element.data as OtherDeviceData);
+        break;
       case OBJECT_TYPE.LIGHT:
         this.lightsIndex.set(element.id, element.data as LightDeviceData);
         break;

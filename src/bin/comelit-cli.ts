@@ -11,7 +11,6 @@ import {
   ThermoSeason,
 } from '../comelit-client';
 import { DeviceData, OFF, ON, STATUS_OFF, STATUS_ON, ThermostatDeviceData } from '../types';
-import { sleep } from '../utils';
 
 const readline = require('readline');
 
@@ -147,6 +146,18 @@ const options: ClientOptions & any = yargs
     toggle: {
       describe: 'Turn on/off a light',
       type: 'string',
+    },
+  })
+  .command('others', 'Get the list of all "others" devices in the house', {
+    host: {
+      alias: 'h',
+      description: 'broker host or IP',
+      type: 'string',
+      demandOption: false,
+    },
+    toggle: {
+      describe: 'Turn on/off an "other" device',
+      type: 'number',
     },
   })
   .command('outlets', 'Get the list of all outlets in the house', {
@@ -299,6 +310,13 @@ async function run() {
             await listOutlets();
           }
           break;
+        case 'others':
+          if (toggle !== undefined) {
+            await toggleOthers(toggle);
+          } else {
+            await listOthers();
+          }
+          break;
         case 'shutters':
           if (toggle !== undefined) {
             await toggleShutter(toggle);
@@ -388,67 +406,101 @@ function printObj(obj: DeviceData) {
 
 async function listLights(fn: (obj: DeviceData) => void) {
   const homeIndex = await client.fetchHomeIndex();
-  return [...homeIndex.lightsIndex.values()].forEach(light => {
-    return fn(light);
-  });
+  if (homeIndex.othersIndex.size) {
+    return [...homeIndex.lightsIndex.values()].forEach(light => {
+      return fn(light);
+    });
+  } else {
+    console.log(chalk.red('No device of type light found.'));
+  }
 }
 
 async function listOutlets() {
   const homeIndex = await client.fetchHomeIndex();
-  [...homeIndex.outletsIndex.values()].forEach(outlet => {
-    console.log(
-      chalk.green(
-        `${outlet.objectId} - ${outlet.descrizione} (status ${
-          outlet.status === STATUS_ON ? 'ON' : 'OFF'
-        })`
-      )
-    );
-  });
+  if (homeIndex.outletsIndex.size) {
+    [...homeIndex.outletsIndex.values()].forEach(outlet => {
+      console.log(
+        chalk.green(
+          `${outlet.objectId} - ${outlet.descrizione} (status ${
+            outlet.status === STATUS_ON ? 'ON' : 'OFF'
+          })`
+        )
+      );
+    });
+  } else {
+    console.log(chalk.red('No device of type outlet found.'));
+  }
+}
+
+async function listOthers() {
+  const homeIndex = await client.fetchHomeIndex();
+  if (homeIndex.othersIndex.size) {
+    [...homeIndex.othersIndex.values()].forEach(other => {
+      console.log(
+        chalk.green(
+          `${other.objectId} - ${other.descrizione} (status ${
+            other.status === STATUS_ON ? 'ON' : 'OFF'
+          })`
+        )
+      );
+      ``;
+    });
+  } else {
+    console.log(chalk.red('No device of type other found.'));
+  }
 }
 
 async function listShutters() {
   const homeIndex = await client.fetchHomeIndex();
-  [...homeIndex.blindsIndex.values()].forEach(blind => {
-    console.log(
-      chalk.green(
-        `${blind.objectId} - ${blind.descrizione} (status ${
-          blind.status === STATUS_ON ? 'DOWN' : 'UP'
-        })`
-      )
-    );
-  });
+  if (homeIndex.blindsIndex.size) {
+    [...homeIndex.blindsIndex.values()].forEach(blind => {
+      console.log(
+        chalk.green(
+          `${blind.objectId} - ${blind.descrizione} (status ${
+            blind.status === STATUS_ON ? 'DOWN' : 'UP'
+          })`
+        )
+      );
+    });
+  } else {
+    console.log(chalk.red('No device of type blind found.'));
+  }
 }
 
 async function listClima() {
   const homeIndex = await client.fetchHomeIndex();
-  [...homeIndex.thermostatsIndex.values()].forEach(clima => {
-    const auto_man = clima.auto_man;
-    const isOff = auto_man === ClimaMode.OFF_AUTO || auto_man === ClimaMode.OFF_MANUAL;
-    const isManual = auto_man === ClimaMode.OFF_MANUAL || auto_man === ClimaMode.MANUAL;
-    console.log(
-      chalk.green(
-        `${clima.objectId} - ${clima.descrizione}:\nThermostat status ${isOff ? 'OFF' : 'ON'}, ${
-          isManual ? 'manual mode' : 'auto mode'
-        }, ${clima.est_inv === ThermoSeason.WINTER ? 'winter' : 'summer'}, Temperature ${parseInt(
-          clima.temperatura
-        ) / 10}°, threshold ${parseInt(clima.soglia_attiva) / 10}°`
-      )
-    );
-    const humi_auto_man = clima.auto_man_umi;
-    const humi_isOff =
-      humi_auto_man === ClimaMode.OFF_AUTO || humi_auto_man === ClimaMode.OFF_MANUAL;
-    const humi_isManual =
-      humi_auto_man === ClimaMode.OFF_MANUAL || humi_auto_man === ClimaMode.MANUAL;
-    console.log(
-      chalk.blue(
-        `Dehumidifier status is ${humi_isOff ? 'OFF' : 'ON'}, ${
-          humi_isManual ? 'manual mode' : 'auto mode'
-        }, Humidity level ${parseInt(clima.umidita)}%, threshold ${
-          clima.soglia_attiva_umi
-        }%\nGeneral status is ${clima.status === '1' ? 'ON' : 'OFF'}\n`
-      )
-    );
-  });
+  if (homeIndex.thermostatsIndex.size) {
+    [...homeIndex.thermostatsIndex.values()].forEach(clima => {
+      const auto_man = clima.auto_man;
+      const isOff = auto_man === ClimaMode.OFF_AUTO || auto_man === ClimaMode.OFF_MANUAL;
+      const isManual = auto_man === ClimaMode.OFF_MANUAL || auto_man === ClimaMode.MANUAL;
+      console.log(
+        chalk.green(
+          `${clima.objectId} - ${clima.descrizione}:\nThermostat status ${isOff ? 'OFF' : 'ON'}, ${
+            isManual ? 'manual mode' : 'auto mode'
+          }, ${clima.est_inv === ThermoSeason.WINTER ? 'winter' : 'summer'}, Temperature ${parseInt(
+            clima.temperatura
+          ) / 10}°, threshold ${parseInt(clima.soglia_attiva) / 10}°`
+        )
+      );
+      const humi_auto_man = clima.auto_man_umi;
+      const humi_isOff =
+        humi_auto_man === ClimaMode.OFF_AUTO || humi_auto_man === ClimaMode.OFF_MANUAL;
+      const humi_isManual =
+        humi_auto_man === ClimaMode.OFF_MANUAL || humi_auto_man === ClimaMode.MANUAL;
+      console.log(
+        chalk.blue(
+          `Dehumidifier status is ${humi_isOff ? 'OFF' : 'ON'}, ${
+            humi_isManual ? 'manual mode' : 'auto mode'
+          }, Humidity level ${parseInt(clima.umidita)}%, threshold ${
+            clima.soglia_attiva_umi
+          }%\nGeneral status is ${clima.status === '1' ? 'ON' : 'OFF'}\n`
+        )
+      );
+    });
+  } else {
+    console.log(chalk.red('No device of type clima found.'));
+  }
 }
 
 async function toggleLight(index: string) {
@@ -489,6 +541,20 @@ async function toggleShutter(index: string) {
     }
   } else {
     console.log(chalk.red('Selected shutter does not exists'));
+  }
+}
+
+async function toggleOthers(index: string) {
+  const homeIndex = await client.fetchHomeIndex();
+  const otherDeviceData = homeIndex.get(index);
+  if (otherDeviceData) {
+    if (otherDeviceData.status === STATUS_OFF) {
+      await client.toggleDeviceStatus(index, ON);
+    } else {
+      await client.toggleDeviceStatus(index, OFF);
+    }
+  } else {
+    console.log(chalk.red('Selected device does not exists'));
   }
 }
 
