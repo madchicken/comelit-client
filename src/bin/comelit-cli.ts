@@ -406,7 +406,7 @@ function printObj(obj: DeviceData) {
 
 async function listLights(fn: (obj: DeviceData) => void) {
   const homeIndex = await client.fetchHomeIndex();
-  if (homeIndex.othersIndex.size) {
+  if (homeIndex.lightsIndex.size) {
     return [...homeIndex.lightsIndex.values()].forEach(light => {
       return fn(light);
     });
