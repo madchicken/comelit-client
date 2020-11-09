@@ -125,9 +125,10 @@ export class ComelitSbClient {
     onUpdate?: (objId: string, device: DeviceData) => void,
     log?: ConsoleLike
   ) {
-    this.address = address.startsWith('http://')
-      ? `${address}:${port}`
-      : `http://${address}:${port}`;
+    this.address =
+      address.startsWith('http://') || address.startsWith('https://')
+        ? `${address}:${port}`
+        : `http://${address}:${port}`;
     this.onUpdate = onUpdate;
     this.log = log || console;
   }
@@ -254,7 +255,7 @@ export class ComelitSbClient {
       type: OBJECT_TYPE.ZONE,
       sub_type: OBJECT_SUBTYPE.GENERIC_ZONE,
       descrizione: 'root',
-      elements: [...rooms.values()].map((dd) => ({ id: dd.id, data: dd })),
+      elements: [...rooms.values()].map(dd => ({ id: dd.id, data: dd })),
     });
   }
 
