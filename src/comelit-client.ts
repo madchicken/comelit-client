@@ -389,7 +389,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     this.props.client = await connectAsync(broker, {
       username: config.hub_username || 'hsrv-user',
       password: config.hub_password || 'sf1nE9bjPc',
-      clientId: config.clientId || CLIENT_ID_PREFIX,
+      clientId: this.clientId,
       keepalive: 120,
       rejectUnauthorized: false,
     });
