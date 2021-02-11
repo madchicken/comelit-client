@@ -1,6 +1,7 @@
 import axios from 'axios';
 import {
   ConsoleLike,
+  DEVICE_STATUS,
   DeviceData,
   DeviceIndex,
   HomeIndex,
@@ -150,6 +151,7 @@ export class ComelitSbClient {
         id: getZoneKey(index),
         objectId: `${index}`,
         status: STATUS_OFF,
+        powerst: STATUS_OFF,
         type: OBJECT_TYPE.ZONE,
         sub_type: OBJECT_SUBTYPE.GENERIC_ZONE,
         descrizione: desc || 'Root',
@@ -210,13 +212,14 @@ export class ComelitSbClient {
           id: getClimaKey(index),
           objectId: `${index}`,
           status: data.status[index] === 1 ? STATUS_ON : STATUS_OFF,
+          powerst: data.status[index] === 1 ? STATUS_ON : STATUS_OFF,
           type: OBJECT_TYPE.THERMOSTAT,
           sub_type:
             data.type[index] >= 11 && data.type[index] <= 14 && data.type[index] !== 12
               ? OBJECT_SUBTYPE.CLIMA_THERMOSTAT_DEHUMIDIFIER
               : OBJECT_SUBTYPE.CLIMA_TERM,
           descrizione: desc,
-          isProtected: `${data.protected[index]}`,
+          isProtected: `${data.protected[index]}` as DEVICE_STATUS,
           placeId: `${roomId}`,
         };
         updateClima(value, thermostatData);
@@ -252,6 +255,7 @@ export class ComelitSbClient {
       id: ROOT_ID,
       objectId: ROOT_ID,
       status: STATUS_OFF,
+      powerst: STATUS_OFF,
       type: OBJECT_TYPE.ZONE,
       sub_type: OBJECT_SUBTYPE.GENERIC_ZONE,
       descrizione: 'root',
@@ -298,7 +302,7 @@ export class ComelitSbClient {
           if (deviceData) {
             const updatedStatus = `${status}`; // can be 0, 1 or 2
             if (updatedStatus !== deviceData.status) {
-              deviceData.status = updatedStatus;
+              deviceData.status = updatedStatus as DEVICE_STATUS;
               this.updateSingleDevice(homeIndex, id, deviceData);
             }
           }
@@ -329,7 +333,7 @@ export class ComelitSbClient {
           const deviceData = homeIndex.thermostatsIndex.get(id);
           if (deviceData) {
             const value = info.data.val[index] as any[][];
-            deviceData.status = `${status}`;
+            deviceData.status = `${status}` as DEVICE_STATUS;
             updateClima(value, deviceData);
             this.updateSingleDevice(homeIndex, id, deviceData);
           }

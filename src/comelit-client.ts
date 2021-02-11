@@ -5,12 +5,14 @@ import dgram, { RemoteInfo } from 'dgram';
 import { AddressInfo } from 'net';
 import { ConsoleLike, DeviceData, HomeIndex } from './types';
 import Timeout = NodeJS.Timeout;
+import atob from 'atob';
 
 export const ROOT_ID = 'GEN#17#13#1';
 
 const connectAsync = MQTT.connectAsync;
 const CLIENT_ID_PREFIX = 'HSrv';
 const SCAN_PORT = 24199;
+const SECRETS = atob('aHNydi11c2VyfHNmMW5FOWJqUGN8aXBjLXVzZXJ8aXJqNkdsdjZKMA==').split('|');
 
 export enum REQUEST_TYPE {
   STATUS = 0,
@@ -384,11 +386,11 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     this.logger.info(
       `Connecting to Comelit HUB at ${broker} with clientID ${
         this.clientId
-      } (user: ${config.hub_username || 'hsrv-user'}, pwd ${config.hub_password || 'sf1nE9bjPc'})`
+      } (user: ${config.hub_username || SECRETS[0]}, pwd ${config.hub_password || SECRETS[1]})`
     );
     this.props.client = await connectAsync(broker, {
-      username: config.hub_username || 'hsrv-user',
-      password: config.hub_password || 'sf1nE9bjPc',
+      username: config.hub_username || SECRETS[0],
+      password: config.hub_password || SECRETS[1],
       clientId: this.clientId,
       keepalive: 120,
       rejectUnauthorized: false,

@@ -10,12 +10,21 @@ import {
   ROOT_ID,
   ThermoSeason,
 } from '../comelit-client';
-import { DeviceData, OFF, ON, STATUS_OFF, STATUS_ON, ThermostatDeviceData } from '../types';
+import {
+  CLOSE,
+  DeviceData,
+  OBJECT_SUBTYPE,
+  OFF,
+  ON,
+  OPEN,
+  STATUS_OFF,
+  STATUS_ON,
+  STATUS_OPEN,
+  ThermostatDeviceData,
+} from '../types';
+import { sleep } from '../utils';
 
 const readline = require('readline');
-
-const DEFAULT_BROKER_PASSWORD = 'sf1nE9bjPc';
-const DEFAULT_BROKER_USER = 'hsrv-user';
 
 interface ClientOptions {
   host?: string;
@@ -48,15 +57,13 @@ const options: ClientOptions & any = yargs
       description: 'Username to use to connect MQTT broker',
       alias: 'bu',
       type: 'string',
-      demandOption: true,
-      default: DEFAULT_BROKER_USER,
+      demandOption: false,
     },
     hub_password: {
       description: 'Password to use to connect MQTT broker',
       alias: 'bp',
       type: 'string',
-      demandOption: true,
-      default: DEFAULT_BROKER_PASSWORD,
+      demandOption: false,
     },
     client_id: {
       description:
@@ -93,14 +100,12 @@ const options: ClientOptions & any = yargs
     broker_username: {
       alias: 'bu',
       type: 'string',
-      demandOption: true,
-      default: DEFAULT_BROKER_USER,
+      demandOption: false,
     },
     broker_password: {
       alias: 'bp',
       type: 'string',
-      demandOption: true,
-      default: DEFAULT_BROKER_PASSWORD,
+      demandOption: false,
     },
     client_id: { type: 'string', default: null },
   })
@@ -172,7 +177,7 @@ const options: ClientOptions & any = yargs
       type: 'number',
     },
   })
-  .command('shutters', 'Get the list of all shutters in the house', {
+  .command('blinds', 'Get the list of all blinds in the house', {
     host: {
       alias: 'h',
       description: 'broker host or IP',
@@ -180,7 +185,12 @@ const options: ClientOptions & any = yargs
       demandOption: false,
     },
     toggle: {
-      describe: 'Open/close a shutter',
+      describe: 'Open/close a blind (use a number between 0 to 100 to set a specific position)',
+      type: 'string',
+    },
+    percentage: {
+      alias: 'perc',
+      describe: 'Set the target position for a blind',
       type: 'number',
     },
   })
@@ -193,7 +203,7 @@ const options: ClientOptions & any = yargs
     },
     toggle: {
       describe: 'Turn on/off a thermostat',
-      type: 'number',
+      type: 'string',
     },
     temp: {
       describe: 'Set the temperature for a thermostat',
@@ -221,6 +231,18 @@ const options: ClientOptions & any = yargs
       alias: 'perc',
       describe: 'Set the threshold humidity for a dehumidifier',
       type: 'number',
+    },
+  })
+  .command('irrigation', 'Get info about house irrigation system', {
+    host: {
+      alias: 'h',
+      description: 'broker host or IP',
+      type: 'string',
+      demandOption: false,
+    },
+    toggle: {
+      describe: 'Turn on/off irrigation system',
+      type: 'string',
     },
   })
   .command(
@@ -317,11 +339,11 @@ async function run() {
             await listOthers();
           }
           break;
-        case 'shutters':
+        case 'blinds':
           if (toggle !== undefined) {
-            await toggleShutter(toggle);
+            await toggleBlind(toggle, options.perc);
           } else {
-            await listShutters();
+            await listBlinds();
           }
           break;
         case 'clima':
@@ -346,6 +368,13 @@ async function run() {
             }
           } else {
             await listClima();
+          }
+          break;
+        case 'irrigation':
+          if (toggle !== undefined) {
+            await toggleIrrigation(toggle);
+          } else {
+            await listIrrigation();
           }
           break;
         case 'listen':
@@ -450,7 +479,7 @@ async function listOthers() {
   }
 }
 
-async function listShutters() {
+async function listBlinds() {
   const homeIndex = await client.fetchHomeIndex();
   if (homeIndex.blindsIndex.size) {
     [...homeIndex.blindsIndex.values()].forEach(blind => {
@@ -503,6 +532,22 @@ async function listClima() {
   }
 }
 
+async function listIrrigation() {
+  const homeIndex = await client.fetchHomeIndex();
+  if (homeIndex.irrigationIndex.size) {
+    return [...homeIndex.irrigationIndex.values()].forEach(irr => {
+      console.log(
+        chalk.green(
+          `${irr.objectId} - ${irr.descrizione} (status ${irr.status === STATUS_ON ? 'ON' : 'OFF'})`
+        )
+      );
+      ``;
+    });
+  } else {
+    console.log(chalk.red('No device of type irrigation found.'));
+  }
+}
+
 async function toggleLight(index: string) {
   const lightDeviceData = await client.device(index);
   if (lightDeviceData) {
@@ -530,17 +575,31 @@ async function toggleOutlets(index: string) {
   }
 }
 
-async function toggleShutter(index: string) {
+async function toggleBlind(index: string, percentage?: number) {
   const homeIndex = await client.fetchHomeIndex();
-  const blindDeviceData = homeIndex.get(index);
+  const blindDeviceData = homeIndex.blindsIndex.get(index);
   if (blindDeviceData) {
-    if (blindDeviceData.status === STATUS_OFF) {
-      await client.toggleDeviceStatus(index, ON);
+    if (percentage) {
+      if (blindDeviceData.sub_type === OBJECT_SUBTYPE.ENHANCED_ELECTRIC_BLIND) {
+        const position = Math.round(percentage * 2.55);
+        const status = position >= 0 && position <= 255 ? position : 127;
+        await client.toggleDeviceStatus(index, status);
+      } else {
+        console.error('Sorry, your blind type does not support percentage values');
+      }
     } else {
-      await client.toggleDeviceStatus(index, OFF);
+      if (blindDeviceData.status === STATUS_OPEN) {
+        await client.toggleDeviceStatus(index, CLOSE);
+        await sleep(35000);
+        await client.toggleDeviceStatus(index, OPEN);
+      } else {
+        await client.toggleDeviceStatus(index, OPEN);
+        await sleep(35000);
+        await client.toggleDeviceStatus(index, CLOSE);
+      }
     }
   } else {
-    console.log(chalk.red('Selected shutter does not exists'));
+    console.log(chalk.red('Selected blind does not exists'));
   }
 }
 
@@ -630,6 +689,20 @@ async function setHumidifierTemperature(index: string, temperature: string) {
     }
   } catch (e) {
     console.log(chalk.red(e.message));
+  }
+}
+
+async function toggleIrrigation(index: string) {
+  const homeIndex = await client.fetchHomeIndex();
+  const irrigationData = homeIndex.irrigationIndex.get(index);
+  if (irrigationData) {
+    if (irrigationData.status === STATUS_OFF) {
+      await client.toggleDeviceStatus(index, ON);
+    } else {
+      await client.toggleDeviceStatus(index, OFF);
+    }
+  } else {
+    console.log(chalk.red('Selected device does not exists'));
   }
 }
 

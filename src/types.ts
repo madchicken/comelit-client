@@ -1,24 +1,28 @@
 import { ClimaMode, ThermoSeason } from './comelit-client';
 
+export type DEVICE_STATUS = '0' | '1';
+
 export interface DomoticData {
   id: string;
-  type: number;
-  sub_type: number;
-  sched_status?: string;
+  type: OBJECT_TYPE;
+  sub_type: OBJECT_SUBTYPE;
+  sched_status?: DEVICE_STATUS;
   sched_lock?: string;
-  status: string;
+  schedZoneStatus?: number[];
+  status: DEVICE_STATUS;
 }
 
-export interface DeviceData extends DomoticData {
+export interface DeviceData<T extends DeviceData = any> extends DomoticData {
   descrizione: string;
   placeOrder?: string;
   num_modulo?: string;
   num_uscita?: string;
   icon_id?: string;
-  isProtected?: string;
+  isProtected?: DEVICE_STATUS;
   objectId?: string;
   placeId?: string;
-  elements?: DeviceInfo[];
+  powerst: DEVICE_STATUS;
+  elements?: T[];
 }
 
 export interface DeviceInfo {
@@ -27,7 +31,6 @@ export interface DeviceInfo {
 }
 
 export interface OtherDeviceData extends DeviceData {
-  powerst: string;
   tempo_uscita: string;
 }
 
@@ -35,13 +38,18 @@ export interface LightDeviceData extends DeviceData {}
 
 export interface BlindDeviceData extends DeviceData {
   tempo_uscita: number;
-  open_status?: number;
+  open_status?: DEVICE_STATUS;
+  position?: string;
+  preferPosition: string;
+  enablePreferPosition: DEVICE_STATUS;
 }
 
 export interface OutletDeviceData extends DeviceData {
   instant_power: string;
   out_power: number;
 }
+
+export interface IrrigationDeviceData extends DeviceData {}
 
 export interface ThermostatDeviceData extends DeviceData {
   num_ingresso?: number;
@@ -73,14 +81,14 @@ export interface ThermostatDeviceData extends DeviceData {
   soglia_semiauto?: string;
   soglia_auto_inv?: string;
   soglia_auto_est?: string;
-  out_enable_inv?: string;
-  out_enable_est?: string;
-  dir_enable_inv?: string;
-  dir_enable_est?: string;
-  heatAutoFanDisable?: string;
-  coolAutoFanDisable?: string;
-  heatSwingDisable?: string;
-  coolSwingDisable?: string;
+  out_enable_inv?: DEVICE_STATUS;
+  out_enable_est?: DEVICE_STATUS;
+  dir_enable_inv?: DEVICE_STATUS;
+  dir_enable_est?: DEVICE_STATUS;
+  heatAutoFanDisable?: DEVICE_STATUS;
+  coolAutoFanDisable?: DEVICE_STATUS;
+  heatSwingDisable?: DEVICE_STATUS;
+  coolSwingDisable?: DEVICE_STATUS;
   out_type_inv?: string;
   out_type_est?: string;
   temp_base_inv?: string;
@@ -142,6 +150,7 @@ export enum OBJECT_TYPE {
   OTHER = 1,
   BLIND = 2,
   LIGHT = 3,
+  IRRIGATION = 4,
   THERMOSTAT = 9,
   OUTLET = 10,
   POWER_SUPPLIER = 11,
@@ -162,13 +171,18 @@ export enum OBJECT_SUBTYPE {
   CONSUMPTION = 15,
   CLIMA_THERMOSTAT_DEHUMIDIFIER = 16,
   CLIMA_DEHUMIDIFIER = 17,
+  ENHANCED_ELECTRIC_BLIND = 31,
 }
 
 export const ON = 1;
 export const OFF = 0;
+export const OPEN = 1;
+export const CLOSE = 0;
 export const IDLE = 2;
 export const STATUS_ON = '1';
 export const STATUS_OFF = '0';
+export const STATUS_OPEN = '1';
+export const STATUS_CLOSED = '0';
 
 export class HomeIndex {
   public readonly othersIndex: DeviceIndex<OtherDeviceData> = new Map<string, OtherDeviceData>();
@@ -180,6 +194,10 @@ export class HomeIndex {
   >();
   public readonly blindsIndex: DeviceIndex<BlindDeviceData> = new Map<string, BlindDeviceData>();
   public readonly outletsIndex: DeviceIndex<OutletDeviceData> = new Map<string, OutletDeviceData>();
+  public readonly irrigationIndex: DeviceIndex<IrrigationDeviceData> = new Map<
+    string,
+    IrrigationDeviceData
+  >();
   public readonly supplierIndex: DeviceIndex<SupplierDeviceData> = new Map<
     string,
     SupplierDeviceData
@@ -230,6 +248,9 @@ export class HomeIndex {
         break;
       case OBJECT_TYPE.POWER_SUPPLIER:
         this.supplierIndex.set(element.id, element.data as SupplierDeviceData);
+        break;
+      case OBJECT_TYPE.IRRIGATION:
+        this.irrigationIndex.set(element.id, element.data as IrrigationDeviceData);
         break;
       default:
         this.unknownIndex.set(element.id, element.data);

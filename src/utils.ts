@@ -42,5 +42,5 @@ export async function doGet<T = any>(
 }
 
 export async function sleep(time) {
-  return new Promise((resolve) => setTimeout(() => resolve(), time));
+  return new Promise(resolve => setTimeout(() => resolve(null), time));
 }
