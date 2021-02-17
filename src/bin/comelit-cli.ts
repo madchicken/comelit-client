@@ -583,7 +583,7 @@ async function toggleBlind(index: string, percentage?: number) {
       if (blindDeviceData.sub_type === OBJECT_SUBTYPE.ENHANCED_ELECTRIC_BLIND) {
         const position = Math.round(percentage * 2.55);
         const status = position >= 0 && position <= 255 ? position : 127;
-        await client.toggleDeviceStatus(index, status);
+        await client.setBlindPosition(index, status);
       } else {
         console.error('Sorry, your blind type does not support percentage values');
       }

@@ -45,6 +45,7 @@ export enum ACTION_TYPE {
   SWITCH_CLIMA_MODE = 13,
   UMI_SETPOINT = 19,
   SWITCH_UMI_MODE = 23,
+  SET_BLIND_POSITION = 52,
 }
 
 export interface MqttIncomingMessage {
@@ -552,6 +553,10 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
 
   async toggleThermostatStatus(id: string, mode: ClimaOnOff): Promise<boolean> {
     return this.sendAction(id, ACTION_TYPE.SET, mode);
+  }
+
+  async setBlindPosition(id: string, position: number): Promise<boolean> {
+    return this.sendAction(id, ACTION_TYPE.SET_BLIND_POSITION, position);
   }
 
   async sendAction(id: string, type: ACTION_TYPE, value: any) {
