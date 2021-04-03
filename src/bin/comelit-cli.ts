@@ -579,7 +579,7 @@ async function toggleBlind(index: string, percentage?: number) {
   const homeIndex = await client.fetchHomeIndex();
   const blindDeviceData = homeIndex.blindsIndex.get(index);
   if (blindDeviceData) {
-    if (percentage) {
+    if (typeof percentage === 'number') {
       if (blindDeviceData.sub_type === OBJECT_SUBTYPE.ENHANCED_ELECTRIC_BLIND) {
         const position = Math.round(percentage * 2.55);
         const status = position >= 0 && position <= 255 ? position : 127;
