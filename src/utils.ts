@@ -42,5 +42,9 @@ export async function doGet<T = any>(
 }
 
 export async function sleep(time) {
-  return new Promise(resolve => setTimeout(() => resolve(null), time));
+  return new Promise((resolve) => setTimeout(() => resolve(null), time));
+}
+
+export function bytesToHex(byteArray: Buffer): string {
+  return byteArray.reduce((output, elem) => output + ('0' + elem.toString(16)).slice(-2), '');
 }

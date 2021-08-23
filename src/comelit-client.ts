@@ -1,6 +1,6 @@
 import MQTT, { AsyncMqttClient } from 'async-mqtt';
 import { DeferredMessage, PromiseBasedQueue } from './promise-queue';
-import { generateUUID, sleep } from './utils';
+import { bytesToHex, generateUUID, sleep } from './utils';
 import dgram, { RemoteInfo } from 'dgram';
 import { AddressInfo } from 'net';
 import { ConsoleLike, DeviceData, HomeIndex } from './types';
@@ -140,10 +140,6 @@ function deserializeMessage(message: any): MqttIncomingMessage {
   return parsed as MqttIncomingMessage;
 }
 
-function bytesToHex(byteArray: Buffer): string {
-  return byteArray.reduce((output, elem) => output + ('0' + elem.toString(16)).slice(-2), '');
-}
-
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DEFAULT_TIMEOUT = 5000;
 
@@ -237,7 +233,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
 
   findInQueue(message: MqttIncomingMessage): DeferredMessage<MqttMessage, MqttIncomingMessage> {
     return this.queuedMessages.find(
-      m => m.message.seq_id == message.seq_id && m.message.req_type == message.req_type
+      (m) => m.message.seq_id == message.seq_id && m.message.req_type == message.req_type
     );
   }
 
@@ -246,7 +242,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
   }
 
   scan(): Promise<ComelitDevice[]> {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       const devices = [];
       const server = dgram.createSocket('udp4');
       let timeout: Timeout;
@@ -265,7 +261,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
         server.send(message, address.port, address.address);
       }
 
-      server.bind(() => {
+      server.bind(null, '', () => {
         server.setBroadcast(true);
         sendScan();
         timeout = setTimeout(() => {
@@ -278,7 +274,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
         this.logger.debug(`Server listening ${address.address}:${address.port}`);
       });
 
-      server.on('error', err => {
+      server.on('error', (err) => {
         this.logger.error(`server error:\n${err.stack}`);
         clearInterval(timeout);
         server.close();
@@ -345,12 +341,12 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
           ? config.host.substr(config.host.indexOf('://') + 3)
           : config.host
       );
-      server.on('message', msg => {
+      server.on('message', (msg) => {
         const macAddress = bytesToHex(msg.subarray(14, 20));
         server.close();
         resolve(macAddress.toUpperCase());
       });
-      server.on('error', err => {
+      server.on('error', (err) => {
         this.logger.info(`server error:\n${err.stack}`);
         server.close();
         reject();
@@ -367,7 +363,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     } else {
       this.logger.info('Searching for Comelit HUB on LAN...');
       const devices = await this.scan();
-      const hub = devices.find(device => device.appID === 'HSrv');
+      const hub = devices.find((device) => device.appID === 'HSrv');
       if (hub) {
         this.logger.info(
           `Found Comelit HUB at ${hub.ip} (MAC ${hub.macAddress}, Name ${hub.description})`
@@ -386,9 +382,9 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     this.rxTopic = `${CLIENT_ID_PREFIX}/${macAddress}/rx/${this.clientId}`;
     this.txTopic = `${CLIENT_ID_PREFIX}/${macAddress}/tx/${this.clientId}`;
     this.logger.info(
-      `Connecting to Comelit HUB at ${broker} with clientID ${
-        this.clientId
-      } (user: ${config.hub_username || SECRETS[0]}, pwd ${config.hub_password || SECRETS[1]})`
+      `Connecting to Comelit HUB at ${broker} with clientID ${this.clientId} (user: ${
+        config.hub_username || SECRETS[0]
+      }, pwd ${config.hub_password || SECRETS[1]})`
     );
     this.props.client = await connectAsync(broker, {
       username: config.hub_username || SECRETS[0],
@@ -611,7 +607,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     return this.props.client
       .publish(this.rxTopic, JSON.stringify(packet))
       .then(() => this.enqueue(packet))
-      .catch(response => {
+      .catch((response) => {
         this.logger.error('Error while sending packet');
         if (response.req_result === 1 && response.message === 'invalid token') {
           return this.login().then(() => this.publish(packet)); // relogin and override invalid token
