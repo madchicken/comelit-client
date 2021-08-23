@@ -520,6 +520,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
 
   async fetchHomeIndex(): Promise<HomeIndex> {
     const root = await this.device(ROOT_ID);
+    this.logger.debug('Home index successfully read: \n', JSON.stringify(root, null, 2));
     return this.mapHome(root);
   }
 
@@ -575,7 +576,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
   }
 
   mapHome(home: DeviceData): HomeIndex {
-    this.homeIndex = new HomeIndex(home);
+    this.homeIndex = new HomeIndex(home, this.logger);
     return this.homeIndex;
   }
 

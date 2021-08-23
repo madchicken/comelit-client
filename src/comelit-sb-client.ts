@@ -13,6 +13,7 @@ import {
   ThermostatDeviceData,
 } from './types';
 import { ClimaMode, ClimaOnOff, ROOT_ID, ThermoSeason } from './comelit-client';
+import * as https from 'https';
 
 export interface BridgeLoginInfo {
   domus: string;
@@ -132,6 +133,10 @@ export class ComelitSbClient {
         : `http://${address}:${port}`;
     this.onUpdate = onUpdate;
     this.log = log || console;
+    const agent = new https.Agent({
+      rejectUnauthorized: false,
+    });
+    axios.defaults.httpsAgent = agent;
   }
 
   async login(): Promise<boolean> {
