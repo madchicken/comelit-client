@@ -206,9 +206,12 @@ export class HomeIndex {
 
   public readonly mainIndex: DeviceIndex = new Map<string, Readonly<DeviceData>>();
 
-  constructor(home: DeviceData) {
+  constructor(home: DeviceData, logger: ConsoleLike = console) {
     home.elements.forEach((info: DeviceInfo) => {
       this.visitElement(info);
+      logger.debug(
+        `Added home device with id: ${info.id}, type: ${info.data.type} (sub-type ${info.data.sub_type})`
+      );
     });
   }
 
