@@ -228,6 +228,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
         if (this.onUpdate && value) {
           this.logger.info(`Updating ${response.obj_id} with data ${JSON.stringify(datum)}`);
           this.onUpdate(response.obj_id, value, oldValue);
+          return true; // message was successfully handled
         }
       }
     }
