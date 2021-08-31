@@ -1,6 +1,6 @@
 import { ClimaMode, ThermoSeason } from './comelit-client';
 
-export type DEVICE_STATUS = '0' | '1';
+export type DEVICE_STATUS = '0' | '1' | '2';
 
 export interface DomoticData {
   id: string;
@@ -37,11 +37,12 @@ export interface OtherDeviceData extends DeviceData {
 export interface LightDeviceData extends DeviceData {}
 
 export interface BlindDeviceData extends DeviceData {
-  tempo_uscita: number;
   open_status?: DEVICE_STATUS;
   position?: string;
-  preferPosition: string;
-  enablePreferPosition: DEVICE_STATUS;
+  openTime?: string;
+  closeTime?: string;
+  preferPosition?: string;
+  enablePreferPosition?: DEVICE_STATUS;
 }
 
 export interface OutletDeviceData extends DeviceData {
