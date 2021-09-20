@@ -1,6 +1,20 @@
 import { JSONMessage, PacketMessage } from '../icona-bridge-client';
 
 describe('Icona Bridge Client', () => {
+  it('should produce a valid AUTH message', function() {
+    const message = PacketMessage.create('UAUT');
+    expect(message.dump()).toBe(
+      '00 06 0f 00 00 00 00 00 cd ab 01 00 07 00 00 00 55 41 55 54 12 24 00'
+    );
+  });
+
+  it('should produce a valid UCFG message', function() {
+    const message = PacketMessage.create('UCFG');
+    expect(message.dump()).toBe(
+      '00 06 0f 00 00 00 00 00 cd ab 01 00 07 00 00 00 55 43 46 47 12 24 00'
+    );
+  });
+
   it('should read a packet with JSON', () => {
     // prettier-ignore
     const bytes = [

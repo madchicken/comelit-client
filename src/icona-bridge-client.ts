@@ -18,20 +18,17 @@ export interface JSONMessage {
 }
 
 const HEADER = [0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+const STRING_TERMINATOR = [0x12, 0x24, 0x00];
 
 export class PacketMessage {
   readonly size: number;
   readonly message?: JSONMessage;
-  readonly stringMessage?: string;
   readonly bytes: Buffer;
 
-  private constructor(bytes?: Buffer, message?: JSONMessage | string) {
-    this.size = bytes.length;
-    this.message =
-      message !== null && typeof message === 'object' ? (message as JSONMessage) : null;
-    this.stringMessage =
-      message !== null && typeof message === 'string' ? (message as string) : null;
+  private constructor(bytes?: Buffer, message?: JSONMessage) {
     this.bytes = bytes;
+    this.size = bytes?.length || 0;
+    this.message = message;
   }
 
   public static fromBuffer(buffer: Buffer): PacketMessage {
@@ -48,25 +45,39 @@ export class PacketMessage {
       const message = JSON.parse(text);
       return new PacketMessage(buffer, message);
     } catch (e) {
-      return new PacketMessage(buffer, text);
+      return new PacketMessage(buffer);
     }
   }
 
   public static fromJSON(message: JSONMessage): PacketMessage {
     const json = { ...message, 'message-id': jsonId++ };
-    const text = [...JSON.stringify(json)].map((c) => c.charCodeAt(0));
+    const text = [...JSON.stringify(json)].map(c => c.charCodeAt(0));
     const buffer = Buffer.from(HEADER.concat(text));
     buffer.writeUIntLE(text.length, 2, 2); // length
     buffer.writeUIntLE(id++, 4, 2); // id
     return new PacketMessage(buffer, json);
   }
 
-  public static fromString(message: string): PacketMessage {
-    const text = [...message].map((c) => c.charCodeAt(0));
-    const buffer = Buffer.from(HEADER.concat(text));
-    buffer.writeUIntLE(text.length, 2, 2); // length
-    buffer.writeUIntLE(id++, 4, 2); // id
-    return new PacketMessage(buffer, message);
+  public static create(message: string): PacketMessage {
+    const text = [...message].map(c => c.charCodeAt(0)).concat(...STRING_TERMINATOR);
+    const textBuffer = Buffer.from(text);
+    const buf1 = Buffer.alloc(HEADER.length + 2 + 2 + 2 + 2);
+    Buffer.from(HEADER).copy(buf1);
+    let offset = HEADER.length;
+    offset = buf1.writeUIntLE(0xabcd, offset, 2);
+    offset = buf1.writeUIntLE(id, offset, 2);
+    offset = buf1.writeUIntLE(text.length, offset, 2);
+    buf1.writeUIntLE(0, offset, 2);
+    const totalLength = buf1.length + textBuffer.length;
+    const buffer = Buffer.concat([buf1, textBuffer], totalLength);
+    buffer.writeUIntLE(buffer.length - HEADER.length, 2, 2); // length
+    return new PacketMessage(buffer);
+  }
+
+  dump() {
+    return [...new Uint8Array(this.bytes)]
+      .map((x: number) => x.toString(16).padStart(2, '0'))
+      .join(' ');
   }
 }
 
