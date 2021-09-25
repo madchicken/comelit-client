@@ -4,7 +4,7 @@ import { ConsoleLike } from './types';
 
 const ICONA_BRIDGE_PORT = 64100;
 
-let jsonId = 1;
+let jsonId = 2;
 let id = 1;
 
 export interface JSONMessage {
@@ -18,24 +18,29 @@ export interface JSONMessage {
 }
 
 const HEADER = [0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-const STRING_TERMINATOR = [0x12, 0x24, 0x00];
+let requestId = 0x2412;
+
+export function bufferToString(bytes: Buffer) {
+  return [...new Uint8Array(bytes)].map((x: number) => x.toString(16).padStart(2, '0')).join(' ');
+}
 
 export class PacketMessage {
   readonly size: number;
   readonly message?: JSONMessage;
   readonly bytes: Buffer;
+  readonly requestId: number;
 
-  private constructor(bytes?: Buffer, message?: JSONMessage) {
+  private constructor(requestId: number, bytes: Buffer, message?: JSONMessage) {
     this.bytes = bytes;
     this.size = bytes?.length || 0;
     this.message = message;
+    this.requestId = id;
   }
 
-  public static fromBuffer(buffer: Buffer): PacketMessage {
-    const size = buffer.readUIntLE(2, 2);
+  public static fromBuffer(requestId: number, buffer: Buffer): PacketMessage {
     const bytes = (() => {
       const chars = [];
-      for (let i = 8; i < size + 8; i++) {
+      for (let i = 0; i < buffer.length; i++) {
         chars.push(buffer.readUIntLE(i, 1));
       }
       return chars;
@@ -43,41 +48,40 @@ export class PacketMessage {
     const text = String.fromCharCode(...bytes);
     try {
       const message = JSON.parse(text);
-      return new PacketMessage(buffer, message);
+      return new PacketMessage(requestId, buffer, message);
     } catch (e) {
-      return new PacketMessage(buffer);
+      return new PacketMessage(requestId, buffer);
     }
   }
 
   public static fromJSON(message: JSONMessage): PacketMessage {
     const json = { ...message, 'message-id': jsonId++ };
-    const text = [...JSON.stringify(json)].map(c => c.charCodeAt(0));
+    const text = [...JSON.stringify(json, null, 0)].map(c => c.charCodeAt(0));
     const buffer = Buffer.from(HEADER.concat(text));
     buffer.writeUIntLE(text.length, 2, 2); // length
-    buffer.writeUIntLE(id++, 4, 2); // id
-    return new PacketMessage(buffer, json);
+    buffer.writeUIntLE(requestId, 4, 2); // requestId
+    return new PacketMessage(requestId, buffer, json);
   }
 
   public static create(message: string): PacketMessage {
-    const text = [...message].map(c => c.charCodeAt(0)).concat(...STRING_TERMINATOR);
+    const text = [...message].map(c => c.charCodeAt(0)).concat(0, 0, 0);
     const textBuffer = Buffer.from(text);
-    const buf1 = Buffer.alloc(HEADER.length + 2 + 2 + 2 + 2);
-    Buffer.from(HEADER).copy(buf1);
-    let offset = HEADER.length;
-    offset = buf1.writeUIntLE(0xabcd, offset, 2);
-    offset = buf1.writeUIntLE(id, offset, 2);
-    offset = buf1.writeUIntLE(text.length, offset, 2);
-    buf1.writeUIntLE(0, offset, 2);
-    const totalLength = buf1.length + textBuffer.length;
-    const buffer = Buffer.concat([buf1, textBuffer], totalLength);
-    buffer.writeUIntLE(buffer.length - HEADER.length, 2, 2); // length
-    return new PacketMessage(buffer);
+    textBuffer.writeUIntLE(requestId, textBuffer.length - 3, 2);
+    const header = Buffer.from(HEADER);
+    const magicNumber = Buffer.from([0xcd, 0xab]);
+    const info = Buffer.alloc(6);
+    info.writeUIntLE(id, 0, 2);
+    info.writeUIntLE(textBuffer.length, 2, 4);
+    const totalLength = [header, magicNumber, info, textBuffer]
+      .map(b => b.length)
+      .reduce((s, l) => (s += l), 0);
+    const buffer = Buffer.concat([header, magicNumber, info, textBuffer], totalLength);
+    buffer.writeUIntLE(buffer.length - HEADER.length, 2, 2);
+    return new PacketMessage(requestId, buffer);
   }
 
   dump() {
-    return [...new Uint8Array(this.bytes)]
-      .map((x: number) => x.toString(16).padStart(2, '0'))
-      .join(' ');
+    return bufferToString(this.bytes);
   }
 }
 
@@ -92,11 +96,12 @@ function accessMessage(token: string) {
 }
 
 function getConfigMessage(addressbooks: string): PacketMessage {
-  const json = {
+  const json: JSONMessage = {
     message: 'get-configuration',
-    addressbooks,
+    addressbooks: addressbooks,
     'message-type': 'request',
-  } as JSONMessage;
+    'message-id': 0,
+  };
 
   return PacketMessage.fromJSON(json);
 }
@@ -155,21 +160,36 @@ export class IconaBridgeClient {
 
   async connect() {
     this.socket = new PromiseSocket(new net.Socket());
-    this.socket.setTimeout(1000);
+    this.socket.setTimeout(5000);
     this.logger.info(`Connecting to ${this.host}:${this.port}`);
     await this.socket.connect(this.port, this.host);
     this.logger.info('connected');
     await this.auth();
     this.logger.info('auth message sent');
-    let buffer: Buffer = (await this.socket.readAll()) as Buffer;
-    let packet = PacketMessage.fromBuffer(buffer);
+    let packet = await this.readResponse();
     this.logger.log(packet);
     await this.auth(this.token);
     this.logger.info('json auth message sent');
-    buffer = (await this.socket.readAll()) as Buffer;
-    packet = PacketMessage.fromBuffer(buffer);
+    packet = await this.readResponse();
     const jsonMessage = this.decodeJSONMessage(packet);
     this.logger.info(jsonMessage);
+    requestId++;
+  }
+
+  private async readResponse() {
+    let buffer: Buffer = (await this.socket.read(8)) as Buffer;
+    let size = buffer.readUIntLE(2, 2);
+    const requestId = buffer.readUIntLE(4, 2);
+    this.logger.info(`Reading next ${size} bytes`, buffer);
+    buffer = (await this.socket.read(size)) as Buffer;
+    const number = buffer.readUIntLE(4, 2);
+    if (number === 0xabcd) {
+      const respId = buffer.readUIntLE(6, 2);
+      this.logger.info(`Read response with ID ${respId}`);
+      size = buffer.readUIntLE(8, 4);
+      buffer = (await this.socket.read(size)) as Buffer; // read more
+    }
+    return PacketMessage.fromBuffer(requestId, buffer);
   }
 
   async shutdown() {
@@ -190,16 +210,9 @@ export class IconaBridgeClient {
 
   async auth(token?: string) {
     if (!token) {
-      // prettier-ignore
-      const bytes = [ /* Packet 248 */
-        0x00, 0x06, 0x0f, 0x00,
-        0x00, 0x00, 0x00, 0x00,
-        0xcd, 0xab, 0x01, 0x00,
-        0x07, 0x00, 0x00, 0x00,
-        0x55, 0x41, 0x55, 0x54,
-        0xe8, 0x06, 0x00];
-      const number = await this.socket.writeAll(Buffer.from(bytes));
-      this.logger.info(`Written ${number} bytes`);
+      const content = PacketMessage.create('UAUT').bytes;
+      const number = await this.socket.writeAll(content);
+      this.logger.info(`Written ${number} bytes`, content);
     } else {
       const message = accessMessage(token);
       const number = await this.socket.writeAll(message.bytes);
@@ -209,8 +222,19 @@ export class IconaBridgeClient {
   }
 
   async getConfig() {
+    this.logger.info(`-- Get configuration`);
+    const content = PacketMessage.create('UCFG').bytes;
+    const number = await this.socket.writeAll(content);
+    this.logger.info(`Written ${number} bytes`, content);
+    let packet = await this.readResponse();
+    this.logger.info(`-- Get configuration step 1`, packet);
     const packetMessage = getConfigMessage('none');
+    this.logger.info(packetMessage.message);
     await this.socket.writeAll(packetMessage.bytes);
+    packet = await this.readResponse();
+    const jsonMessage = this.decodeJSONMessage(packet);
+    this.logger.info(jsonMessage);
+    requestId++;
   }
 
   async openDoor(door: number): Promise<void> {
