@@ -68,6 +68,7 @@ async function openDoor(door: number) {
   if (door) {
     const client = new IconaBridgeClient(options.token, options.host);
     await client.connect();
+    await client.getConfig();
     const resp = await client.openDoor(door);
     await client.shutdown();
     return console.log(chalk.blue(resp));
