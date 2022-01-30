@@ -42,7 +42,7 @@
     "mqtt-packet": "6.6.0",
     "promise-socket": "^7.0.0",
     "querystring": "0.2.0",
-    "typescript": "3.9.7",
+    "typescript": "^4.5.4",
     "yargs": "15.4.1"
   },
   "bin": {

@@ -1,6 +1,6 @@
 import net from 'net';
-import { PromiseSocket } from 'promise-socket';
 import { ConsoleLike } from './types';
+import PromiseSocket from 'promise-socket';
 
 const ICONA_BRIDGE_PORT = 64100;
 
@@ -8,13 +8,24 @@ let jsonId = 2;
 let id = 1;
 
 export interface JSONMessage {
-  message: 'access' | 'get-configuration' | 'server-info';
+  message: 'access' | 'get-configuration' | 'server-info' | 'push-info';
   'user-token'?: string;
   addressbooks?: string;
   'message-id': number;
   'message-type': 'request' | 'response';
   'response-code'?: number;
   'response-string'?: string;
+  'apt-address'?: string;
+  'apt-subaddress'?: number;
+  'bundle-id'?: string;
+  'os-type'?: string;
+  'profile-id'?: string;
+  'device-token'?: string; // '87cd599d00bd7f83d01b85c67b28daa50314b142e7e6649accade61424131dd6',
+  vip?: VIP;
+  'viper-server'?: any;
+  'viper-client'?: any;
+  'viper-p2p'?: any;
+  'building-config'?: any;
 }
 
 const HEADER = [0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
@@ -24,7 +35,177 @@ export function bufferToString(bytes: Buffer) {
   return [...new Uint8Array(bytes)].map((x: number) => x.toString(16).padStart(2, '0')).join(' ');
 }
 
-const resp = {
+export function bufferToASCIIString(bytes: Buffer) {
+  return bytes.toString('utf-8');
+}
+
+interface AptConfig {
+  description: string;
+  'call-divert-busy-en': boolean;
+  'call-divert-address': string;
+  'virtual-key-enabled': boolean;
+}
+
+interface UserParameters {
+  forced: boolean;
+  'apt-address-book': any[];
+  'switchboard-address-book': any[];
+  'camera-address-book': any[];
+  'rtsp-camera-address-book': any[];
+  'entrance-address-book': any[];
+  'actuator-address-book': any[];
+  'opendoor-address-book': {
+    'output-index': number;
+    'apt-address': string;
+    name: string;
+    'secure-mode': boolean;
+  }[];
+  'opendoor-actions': { 'output-index': number; 'apt-address': string; action: string }[];
+}
+
+interface VIP {
+  enabled: boolean;
+  'apt-address': string;
+  'apt-subaddress': number;
+  'logical-subaddress': number;
+  'apt-config': AptConfig;
+  'user-parameters': UserParameters;
+}
+
+export class PacketMessage {
+  readonly size: number;
+  readonly message?: JSONMessage;
+  readonly bytes: Buffer;
+  readonly requestId: number;
+
+  private constructor(requestId: number, bytes: Buffer, message?: JSONMessage) {
+    this.bytes = bytes;
+    this.size = bytes?.length || 0;
+    this.message = message;
+    this.requestId = id;
+  }
+
+  public static fromBuffer(requestId: number, buffer: Buffer): PacketMessage {
+    const bytes = (() => {
+      const chars = [];
+      for (let i = 0; i < buffer.length; i++) {
+        chars.push(buffer.readUIntLE(i, 1));
+      }
+      return chars;
+    })();
+    const text = String.fromCharCode(...bytes);
+    try {
+      const message = JSON.parse(text);
+      return new PacketMessage(requestId, buffer, message);
+    } catch (e) {
+      return new PacketMessage(requestId, buffer);
+    }
+  }
+
+  public static fromJSON(json: JSONMessage): PacketMessage {
+    const text = [...JSON.stringify(json, null, 0)].map(c => c.charCodeAt(0));
+    const buffer = Buffer.from(HEADER.concat(text));
+    buffer.writeUIntLE(text.length, 2, 2); // length
+    buffer.writeUIntLE(requestId, 4, 2); // requestId
+    return new PacketMessage(requestId, buffer, json);
+  }
+
+  public static create(...messages: string[]): PacketMessage {
+    const header = Buffer.from(HEADER);
+    const magicNumber = Buffer.from([0xcd, 0xab, 0x01, 0x00]);
+    const additionalMessages: Buffer[] = [];
+    additionalMessages.push(
+      ...messages.map((s, i) => {
+        const isFirst = i === 0;
+        const info = Buffer.alloc(4);
+        let text = Buffer.from([...s].map(c => c.charCodeAt(0)));
+        if (isFirst) {
+          const id = Buffer.alloc(4);
+          id.writeUIntLE(requestId, 0, 4);
+          text = Buffer.concat([text, id]);
+          info.writeUIntLE(s.length + id.length, 0, 4);
+        } else {
+          info.writeUIntLE(s.length, 0, 4);
+        }
+        return Buffer.concat([info, text]);
+      })
+    );
+
+    const totalLength = [header, magicNumber, ...additionalMessages]
+      .map(b => b.length)
+      .reduce((s, l) => (s += l), 0);
+
+    const buffer = Buffer.concat([header, magicNumber, ...additionalMessages], totalLength);
+    buffer.writeUIntLE(buffer.length - HEADER.length, 2, 2);
+    return new PacketMessage(requestId, buffer);
+  }
+
+  dump(ascii: boolean = false) {
+    if (ascii) {
+      return bufferToASCIIString(this.bytes);
+    }
+    return bufferToString(this.bytes);
+  }
+}
+
+function accessMessage(token: string) {
+  const json = {
+    message: 'access',
+    'user-token': token,
+    'message-type': 'request',
+    'message-id': 2,
+  } as JSONMessage;
+
+  return PacketMessage.fromJSON(json);
+}
+
+// none config response example
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const noneResponseExample = {
+  message: 'get-configuration',
+  'message-type': 'response',
+  'message-id': 3,
+  'response-code': 200,
+  'response-string': 'OK',
+  'viper-server': {
+    'local-address': '192.168.0.66',
+    'local-tcp-port': 64100,
+    'local-udp-port': 64100,
+    'remote-address': '',
+    'remote-tcp-port': 64100,
+    'remote-udp-port': 64100,
+  },
+  'viper-client': { description: 'SU0EG' },
+  'viper-p2p': {
+    mqtt: {
+      role: 'a',
+      base: 'HSrv/0025291701EC/vip/COMHUB01/sdp',
+      server: 'tls://hub-vip3.cloud.comelitgroup.com:443',
+      auth: { method: ['CCS_TOKEN', 'CCS_DEVICE'] },
+    },
+    http: { role: 'a', duuid: '88b8cbf3-cb88-4af3-a907-18bf6655d12f-00001' },
+    stun: {
+      server: ['turn-1-de.cloud.comelitgroup.com:3478', 'turn-1-de.cloud.comelitgroup.com:3478'],
+    },
+  },
+  vip: {
+    enabled: true,
+    'apt-address': 'COMHUB01',
+    'apt-subaddress': 2,
+    'logical-subaddress': 2,
+    'apt-config': {
+      description: '',
+      'call-divert-busy-en': false,
+      'call-divert-address': '',
+      'virtual-key-enabled': false,
+    },
+  },
+  'building-config': { description: 'your building' },
+};
+
+// all config response example
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const allConfigExample = {
   message: 'get-configuration',
   'message-type': 'response',
   'message-id': 3,
@@ -79,83 +260,42 @@ const resp = {
   'building-config': { description: 'your building' },
 };
 
-export class PacketMessage {
-  readonly size: number;
-  readonly message?: JSONMessage;
-  readonly bytes: Buffer;
-  readonly requestId: number;
-
-  private constructor(requestId: number, bytes: Buffer, message?: JSONMessage) {
-    this.bytes = bytes;
-    this.size = bytes?.length || 0;
-    this.message = message;
-    this.requestId = id;
-  }
-
-  public static fromBuffer(requestId: number, buffer: Buffer): PacketMessage {
-    const bytes = (() => {
-      const chars = [];
-      for (let i = 0; i < buffer.length; i++) {
-        chars.push(buffer.readUIntLE(i, 1));
-      }
-      return chars;
-    })();
-    const text = String.fromCharCode(...bytes);
-    try {
-      const message = JSON.parse(text);
-      return new PacketMessage(requestId, buffer, message);
-    } catch (e) {
-      return new PacketMessage(requestId, buffer);
-    }
-  }
-
-  public static fromJSON(message: JSONMessage): PacketMessage {
-    const json = { ...message, 'message-id': jsonId++ };
-    const text = [...JSON.stringify(json, null, 0)].map(c => c.charCodeAt(0));
-    const buffer = Buffer.from(HEADER.concat(text));
-    buffer.writeUIntLE(text.length, 2, 2); // length
-    buffer.writeUIntLE(requestId, 4, 2); // requestId
-    return new PacketMessage(requestId, buffer, json);
-  }
-
-  public static create(message: string): PacketMessage {
-    const text = [...message].map(c => c.charCodeAt(0)).concat(0, 0, 0);
-    const textBuffer = Buffer.from(text);
-    textBuffer.writeUIntLE(requestId, textBuffer.length - 3, 2);
-    const header = Buffer.from(HEADER);
-    const magicNumber = Buffer.from([0xcd, 0xab]);
-    const info = Buffer.alloc(6);
-    info.writeUIntLE(id, 0, 2);
-    info.writeUIntLE(textBuffer.length, 2, 4);
-    const totalLength = [header, magicNumber, info, textBuffer]
-      .map(b => b.length)
-      .reduce((s, l) => (s += l), 0);
-    const buffer = Buffer.concat([header, magicNumber, info, textBuffer], totalLength);
-    buffer.writeUIntLE(buffer.length - HEADER.length, 2, 2);
-    return new PacketMessage(requestId, buffer);
-  }
-
-  dump() {
-    return bufferToString(this.bytes);
-  }
-}
-
-function accessMessage(token: string) {
-  const json = {
-    message: 'access',
-    'user-token': token,
-    'message-type': 'request',
-  } as JSONMessage;
-
-  return PacketMessage.fromJSON(json);
-}
-
 function getConfigMessage(addressbooks: string): PacketMessage {
   const json: JSONMessage = {
     message: 'get-configuration',
     addressbooks: addressbooks,
     'message-type': 'request',
-    'message-id': 0,
+    'message-id': 3,
+  };
+
+  return PacketMessage.fromJSON(json);
+}
+
+/*
+const example = {
+  'apt-address': 'COMHUB01',
+  'apt-subaddress': 50,
+  'bundle-id': 'com.comelitgroup.friendhome',
+  message: 'push-info',
+  'message-id': 2,
+  'os-type': 'ios',
+  'profile-id': '3',
+  'device-token': '87cd599d00bd7f83d01b85c67b28daa50314b142e7e6649accade61424131dd6',
+  'message-type': 'request',
+};
+*/
+
+function getPushInfoMessage(noneConfig: JSONMessage): PacketMessage {
+  const json: JSONMessage = {
+    'apt-address': noneConfig.vip['apt-address'],
+    'apt-subaddress': 50,
+    'bundle-id': 'com.comelitgroup.friendhome',
+    message: 'push-info',
+    'message-id': 2,
+    'os-type': 'ios',
+    'profile-id': '3',
+    'device-token': '87cd599d00bd7f83d01b85c67b28daa50314b142e7e6649accade61424131dd6',
+    'message-type': 'request',
   };
 
   return PacketMessage.fromJSON(json);
@@ -165,48 +305,27 @@ function getInfoMessage(): PacketMessage {
   const json: JSONMessage = {
     message: 'server-info',
     'message-type': 'request',
-    'message-id': 0,
+    'message-id': 20,
   };
 
   return PacketMessage.fromJSON(json);
 }
 
-function openDoorMessage(door: number) {
-  // prettier-ignore
-  const bytes = [
-      0x00, 0x06, 0x20, 0x00, 0x14, 0x24, 0x00, 0x00,
-      0x00, 0x18, 0x6c, 0x35, 0xac, 0x93, 0x00, 0x00,
-      0xff, 0xff, 0xff, 0xff, 0x43, 0x4f, 0x4d, 0x48,
-      0x55, 0x42, 0x30, 0x31, 0x32, 0x00, 0x30, 0x30,
-      0x30, 0x30, 0x30, 0x31, 0x30, 0x30, 0x00, 0x00,
-  ]
-  return Buffer.from(bytes);
-  // const message = Buffer.alloc(56);
-  // const iconaAddr = '00000100';
-  // const hubName = 'COMHUB01';
-  // message.writeUIntLE(0x00063000, 0, 4);
-  // message.writeUIntLE(0xe4060000, 4, 4);
-  // message.writeUIntLE(0xc0181efc, 8, 4);
-  // message.writeUIntLE(0x1182000d, 12, 4);
-  // message.writeUIntLE(0x002d, 16, 2);
-  // message.write(iconaAddr, 18, iconaAddr.length);
-  // message.writeUIntLE(0x0000, 26, 2); // string terminator?
-  // message.writeUIntLE(0x02000000, 28, 4); // ??
-  // message.writeUIntLE(0xffffffff, 32, 4); // ??
-  // message.write(hubName, 36, hubName.length);
-  // message.writeIntLE(door, 44, 1);
-  // message.writeIntLE(0x00, 45, 1); // string terminator?
-  // message.write(iconaAddr, 46, iconaAddr.length);
-  // message.writeUIntLE(0x0000, 54, 2); // string terminator?
-  // return message;
-}
-
-enum STATE {
-  none,
-  unauthorized,
-  authenticating,
-  authenticated,
-}
+const ViperChannelType = {
+  INFO: 0,
+  PUSH: 1,
+  ECHO: 2,
+  UAUT: 3,
+  UADM: 4,
+  UCFG: 5,
+  FACT: 6,
+  CTPP: 7,
+  CSPB: 8,
+  ECHO_SRV: 9,
+  RTPC: 10,
+  FRCG: 11,
+  TSOK: 12,
+};
 
 export class IconaBridgeClient {
   private readonly host: string;
@@ -217,7 +336,6 @@ export class IconaBridgeClient {
 
   readonly logger: ConsoleLike;
   private socket: PromiseSocket<net.Socket>;
-  private state: STATE = STATE.none;
   private queue: Map<number, (p?: any) => any> = new Map();
 
   constructor(
@@ -238,32 +356,42 @@ export class IconaBridgeClient {
     this.logger.info(`Connecting to ${this.host}:${this.port}`);
     await this.socket.connect(this.port, this.host);
     this.logger.info('connected');
-    await this.auth();
-    this.logger.info('auth message sent');
+    const content = PacketMessage.create('UAUT').bytes;
+    await this.socket.writeAll(content);
     let packet = await this.readResponse();
-    this.logger.log(packet);
-    await this.auth(this.token);
-    this.logger.info('json auth message sent');
+    const message = accessMessage(this.token);
+    await this.socket.writeAll(message.bytes);
+    this.logger.log(`Authorization message sent`);
     packet = await this.readResponse();
     const jsonMessage = this.decodeJSONMessage(packet);
-    this.logger.info(jsonMessage);
-    requestId++;
+    const fin = PacketMessage.create('').bytes;
+    await this.socket.writeAll(fin);
+    packet = await this.readResponse();
+    this.logger.info('-- Authentication: ' + jsonMessage['response-string']);
   }
 
   private async readResponse() {
     let buffer: Buffer = (await this.socket.read(8)) as Buffer;
     let size = buffer.readUIntLE(2, 2);
     const requestId = buffer.readUIntLE(4, 2);
-    this.logger.info(`Reading next ${size} bytes`, buffer);
     buffer = (await this.socket.read(size)) as Buffer;
-    const number = buffer.readUIntLE(4, 2);
+    const number = buffer.readUIntLE(0, 2);
+    this.logger.info(`Message type ${number.toString(16)}`);
     if (number === 0xabcd) {
-      const respId = buffer.readUIntLE(6, 2);
-      this.logger.info(`Read response with ID ${respId}`);
-      size = buffer.readUIntLE(8, 4);
-      buffer = (await this.socket.read(size)) as Buffer; // read more
+      const type = buffer.readUIntLE(2, 2);
+      let subSize = buffer.readUIntLE(4, 4);
+      if (subSize) {
+        this.logger.info(buffer.toString('utf-8', 8, 8 + subSize));
+      }
+      this.logger.info(`Read response type ${type}`);
     }
-    return PacketMessage.fromBuffer(requestId, buffer);
+
+    const packet = PacketMessage.fromBuffer(requestId, buffer);
+    if (number == 0x227b) {
+      const jsonMessage = this.decodeJSONMessage(packet);
+      return PacketMessage.fromJSON(jsonMessage);
+    }
+    return packet;
   }
 
   async shutdown() {
@@ -282,98 +410,177 @@ export class IconaBridgeClient {
     return null;
   }
 
-  async auth(token?: string) {
-    if (!token) {
-      const content = PacketMessage.create('UAUT').bytes;
-      const number = await this.socket.writeAll(content);
-      this.logger.info(`Written ${number} bytes`, content);
-    } else {
-      const message = accessMessage(token);
-      const number = await this.socket.writeAll(message.bytes);
-      this.logger.info(`Written ${number} bytes`);
-      this.logger.log(`Authorization message sent`, message);
-    }
-  }
-
-  async getConfig() {
-    this.logger.info(`-- Get configuration`);
+  async getConfig(): Promise<JSONMessage> {
+    requestId++;
     const content = PacketMessage.create('UCFG').bytes;
-    const number = await this.socket.writeAll(content);
-    this.logger.info(`Written ${number} bytes`, content);
+    await this.socket.writeAll(content);
     let packet = await this.readResponse();
-    this.logger.info(`-- Get configuration step 1`, packet);
+
     let packetMessage = getConfigMessage('none');
-    this.logger.info(packetMessage.message);
     await this.socket.writeAll(packetMessage.bytes);
     packet = await this.readResponse();
-    let jsonMessage = this.decodeJSONMessage(packet);
-    this.logger.info(JSON.stringify(jsonMessage, null, 2));
+    this.logger.info('Get configuration: ' + JSON.stringify(packet.message, null, 2));
+    return packet.message;
 
+    /*
     await this.socket.writeAll(PacketMessage.create('UCFG').bytes);
     packet = await this.readResponse();
-    this.logger.info(`-- Get configuration step 2`, packet);
 
-    packetMessage = getConfigMessage('all');
-    this.logger.info(packetMessage.message);
-    await this.socket.writeAll(packetMessage.bytes);
-    packet = await this.readResponse();
-    jsonMessage = this.decodeJSONMessage(packet);
-    this.logger.info(JSON.stringify(jsonMessage, null, 2));
+    await this.socket.writeAll(
+      PacketMessage.create(
+        'CTPP',
+        `${noneConfigResponse.vip['apt-address']}${noneConfigResponse.vip['apt-subaddress']}`
+      ).bytes
+    );
 
     requestId++;
+    await this.socket.writeAll(PacketMessage.create('CSPB').bytes);
 
-    await this.socket.writeAll(PacketMessage.create('INFO').bytes);
+    await this.unknownPacket1();
     packet = await this.readResponse();
-    this.logger.info(`-- Get configuration step 3`, packet);
+    this.logger.info(`-- Get configuration step 3`);
+    packet = await this.readResponse();
+    this.logger.info(`-- Get configuration step 4`);
+
+    // packet = await this.readResponse();
+    // this.logger.info(`-- Get configuration step 5`, packet);
+    // packet = await this.readResponse();
+    // this.logger.info(`-- Get configuration step 6`, packet);
+
+    await this.unknownPacket2(); // 502
+    await this.unknownPacket3(); // 503
+    await this.socket.writeAll(PacketMessage.create('PUSH').bytes); // 504
+
+    packet = await this.readResponse();
+    this.logger.info(`-- Get configuration step 7`, packet);
+    packetMessage = getConfigMessage('all'); // 505
+    await this.socket.writeAll(packetMessage.bytes);
+    let allConfig = null;
+    do {
+      packet = await this.readResponse();
+      allConfig = this.decodeJSONMessage(packet);
+    } while (allConfig === null);
+    this.logger.info(JSON.stringify(allConfig, null, 2));
+
+    requestId++;
+    packetMessage = getPushInfoMessage(noneConfigResponse);
+    await this.socket.writeAll(packetMessage.bytes); // 515
+    await this.socket.writeAll(PacketMessage.create('INFO').bytes); // 517
+
+    await this.readResponse();
 
     packetMessage = getInfoMessage();
     this.logger.info(packetMessage.message);
     await this.socket.writeAll(packetMessage.bytes);
-    packet = await this.readResponse();
-    jsonMessage = this.decodeJSONMessage(packet);
-    this.logger.info(JSON.stringify(jsonMessage, null, 2));
+    let info = null;
+    do {
+      packet = await this.readResponse();
+      info = this.decodeJSONMessage(packet);
+    } while (info === null);
+    this.logger.info(JSON.stringify(info, null, 2));
+    
+     */
   }
 
-  async openDoor(door: number): Promise<void> {
+  async unknownPacket1(): Promise<void> {
+    // 472
+    // prettier-ignore
+    const bytes = [0x00, 0x06, 0x34, 0x00, 0x14, 0x24, 0x00, 0x00,
+      0xc0, 0x18, 0x56, 0x76, 0x83, 0xee, 0x00, 0x11,
+      0x00, 0x40, 0xaf, 0xf8, 0x43, 0x4f, 0x4d, 0x48,
+      0x55, 0x42, 0x30, 0x31, 0x32, 0x00, 0x10, 0x0e,
+      0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff,
+      0x43, 0x4f, 0x4d, 0x48, 0x55, 0x42, 0x30, 0x31,
+      0x32, 0x00, 0x43, 0x4f, 0x4d, 0x48, 0x55, 0x42,
+      0x30, 0x31, 0x00, 0x00];
+    const p = Buffer.from(bytes);
+    p.writeUIntLE(requestId, 4, 2);
+    await this.socket.writeAll(Buffer.from(bytes));
+  }
+
+  async unknownPacket2(): Promise<void> {
+    // 502
+    // prettier-ignore
+    const bytes = [0x00, 0x06, 0x20, 0x00, 0x14, 0x24, 0x00, 0x00,
+      0x00, 0x18, 0x56, 0x76, 0x84, 0xef, 0x00, 0x00,
+      0xff, 0xff, 0xff, 0xff, 0x43, 0x4f, 0x4d, 0x48,
+      0x55, 0x42, 0x30, 0x31, 0x32, 0x00, 0x43, 0x4f,
+      0x4d, 0x48, 0x55, 0x42, 0x30, 0x31, 0x00, 0x00];
+    const p = Buffer.from(bytes);
+    p.writeUIntLE(requestId, 4, 2);
+    await this.socket.writeAll(Buffer.from(bytes));
+  }
+
+  async unknownPacket3(): Promise<void> {
+    // 503
+    // prettier-ignore
+    const bytes = [0x00, 0x06, 0x20, 0x00, 0x14, 0x24, 0x00, 0x00,
+      0x20, 0x18, 0x56, 0x76, 0x84, 0xef, 0x00, 0x00,
+      0xff, 0xff, 0xff, 0xff, 0x43, 0x4f, 0x4d, 0x48,
+      0x55, 0x42, 0x30, 0x31, 0x32, 0x00, 0x43, 0x4f,
+      0x4d, 0x48, 0x55, 0x42, 0x30, 0x31, 0x00, 0x00];
+    const p = Buffer.from(bytes);
+    p.writeUIntLE(requestId, 4, 2);
+    await this.socket.writeAll(Buffer.from(bytes));
+  }
+
+  async openDoor(config: JSONMessage, door: number): Promise<void> {
     requestId++;
     // prettier-ignore
     const bytes = [ /* Packet 1336 */
-      0x00, 0x06, 0x30, 0x00, 0x14, 0x24, 0x00, 0x00,
-      0xc0, 0x18, 0x3a, 0xa1, 0xc0, 0x56, 0x00, 0x0d,
-      0x00, 0x2d, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31,
-      0x30, 0x30, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
+      0x00, 0x06, 0x20, 0x00, 0xe2, 0x63, 0x00, 0x00,
+      0x00, 0x18, 0x2a, 0x7c, 0xec, 0x60, 0x00, 0x00,
       0xff, 0xff, 0xff, 0xff, 0x43, 0x4f, 0x4d, 0x48,
       0x55, 0x42, 0x30, 0x31, 0x32, 0x00, 0x30, 0x30,
       0x30, 0x30, 0x30, 0x31, 0x30, 0x30, 0x00, 0x00 ];
 
     // prettier-ignore
     const bytes2 = [
-        0x00, 0x06, 0x20, 0x00, 0x14, 0x24, 0x00, 0x00,
-        0x00, 0x18, 0x3a, 0xa1, 0xc1, 0x57, 0x00, 0x00,
-        0xff, 0xff, 0xff, 0xff, 0x43, 0x4f, 0x4d, 0x48,
-        0x55, 0x42, 0x30, 0x31, 0x32, 0x00, 0x30, 0x30,
-        0x30, 0x30, 0x30, 0x31, 0x30, 0x30, 0x00, 0x00 ];
+      0x00, 0x06, 0x20, 0x00, 0xe2, 0x63, 0x00, 0x00,
+      0x20, 0x18, 0x2a, 0x7c, 0xec, 0x60, 0x00, 0x00,
+      0xff, 0xff, 0xff, 0xff, 0x43, 0x4f, 0x4d, 0x48,
+      0x55, 0x42, 0x30, 0x31, 0x32, 0x00, 0x30, 0x30,
+      0x30, 0x30, 0x30, 0x31, 0x30, 0x30, 0x00, 0x00 ];
 
     // prettier-ignore
     const bytes3 = [
-      0x00, 0x06, 0x20, 0x00, 0x14, 0x24, 0x00, 0x00,
+      0x00, 0x06, 0x20, 0x00, 0xe2, 0x63, 0x00, 0x00,
       0x20, 0x18, 0x3a, 0xa1, 0xc1, 0x57, 0x00, 0x00,
       0xff, 0xff, 0xff, 0xff, 0x43, 0x4f, 0x4d, 0x48,
       0x55, 0x42, 0x30, 0x31, 0x32, 0x00, 0x30, 0x30,
       0x30, 0x30, 0x30, 0x31, 0x30, 0x30, 0x00, 0x00
     ]
 
-    this.logger.info(`-- Open door start`);
+    const ctpp = PacketMessage.create(
+      'CTPP',
+      `${config.vip['apt-address']}${config.vip['apt-subaddress']}`
+    );
+    this.logger.info(`-- Open door step 1`, ctpp.dump(true));
+    await this.socket.writeAll(ctpp.bytes);
+    await this.unknownPacket1();
+    const unknResp = await this.readResponse();
+    this.logger.info(`-- Open door step 2`, unknResp.dump(true));
+
+    // const unknResp2 = await this.readResponse();
+    // this.logger.info(`-- Open door step 3`, unknResp2.dump(true));
+    // const unknResp3 = await this.readResponse();
+    // this.logger.info(`-- Open door step 4`, unknResp3.dump(true));
+
     const packet = Buffer.from(bytes);
+    packet.writeUIntLE(requestId, 4, 2);
+    this.logger.info(`-- Open door step 5`, bufferToASCIIString(packet));
     await this.socket.writeAll(packet);
-    const resp1 = await this.readResponse();
-    this.logger.info(`-- Open door step 1`, resp1);
-    const resp2 = await this.readResponse();
-    this.logger.info(`-- Open door step 2`, resp2);
+
     const packet2 = Buffer.from(bytes2);
+    packet2.writeUIntLE(requestId, 4, 2);
+    this.logger.info(`-- Open door step 6`, bufferToASCIIString(packet));
     await this.socket.writeAll(packet2);
-    const packet3 = Buffer.from(bytes3);
-    await this.socket.writeAll(packet3);
-    this.logger.info(`-- Open door done`, resp);
+
+    const resp1 = await this.readResponse();
+    if (resp1.message && resp1.message['response-code'] !== 200) {
+      this.logger.info(`-- Open door step 1 FAILED: ${resp1.message['response-string']}`);
+      return;
+    }
+    this.logger.info(`-- Open door done`);
   }
 }
