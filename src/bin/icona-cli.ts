@@ -67,11 +67,14 @@ async function config() {
 async function openDoor(door: number) {
   if (door) {
     const client = new IconaBridgeClient(options.token, options.host);
-    await client.connect();
-    const config = await client.getConfig();
-    await client.openDoor(config, door);
-    await client.shutdown();
-    return console.log(chalk.blue('Open door done'));
+    try {
+      await client.connect();
+      const config = await client.getConfig();
+      await client.openDoor(config, door);
+      return console.log(chalk.blue('Open door done'));
+    } finally {
+      await client.shutdown();
+    }
   }
   return console.log(chalk.red('You must provide a door number'));
 }
