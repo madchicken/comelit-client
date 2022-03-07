@@ -33,7 +33,7 @@ describe('Icona Bridge Client', () => {
       0x67, 0x22, 0x3a, 0x22, 0x41, 0x63, 0x63, 0x65,
       0x73, 0x73, 0x20, 0x47, 0x72, 0x61, 0x6e, 0x74,
       0x65, 0x64, 0x22, 0x7d ];
-    const packet = PacketMessage.fromBuffer(Buffer.from(bytes));
+    const packet = PacketMessage.fromBuffer(2, Buffer.from(bytes));
 
     expect(packet.message).toBeDefined();
     expect(packet.message.message).toBe('access');
