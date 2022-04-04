@@ -11,13 +11,16 @@ interface ClientOptions {
 }
 
 const options: ClientOptions & any = yargs
-  .option('host', { alias: 'h', type: 'string', demandOption: true })
+  .option('host', { alias: 'h', type: 'string', demandOption: true, description: 'Host name/IP of the Serial Bridge' })
   .option('port', {
     alias: 'p',
     type: 'number',
     demandOption: false,
     default: 80,
+    description: 'HTTP port of the Serial Bridge WEB UI',
   })
+  .option('username', { alias: 'u', type: 'string', demandOption: false, description: 'Username to use with Basic Authentication (if present)' })
+  .option('password', { alias: 'w', type: 'string', demandOption: false, description: 'Password to use with Basic Authentication (if present)' })
   .command('rooms', 'Get the list of all rooms in the house')
   .command('lights', 'Get the list of all lights in the house', {
     toggle: {

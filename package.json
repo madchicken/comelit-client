@@ -43,7 +43,8 @@
     "promise-socket": "^7.0.0",
     "querystring": "0.2.0",
     "typescript": "^4.5.4",
-    "yargs": "15.4.1"
+    "yargs": "15.4.1",
+    "yamljs": "^0.3.0"
   },
   "bin": {
     "comelit": "./dist/bin/comelit-cli.js",

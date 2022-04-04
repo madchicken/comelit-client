@@ -46,5 +46,10 @@ export async function sleep(time) {
 }
 
 export function bytesToHex(byteArray: Buffer): string {
-  return byteArray.reduce((output, elem) => output + ('0' + elem.toString(16)).slice(-2), '');
+  return byteArray.reduce((output, elem) => output + ('0' + elem.toString(16)).slice(-2) + " ", '');
+}
+
+export function stringToBuffer(str: string): Buffer {
+  const asNumber = [...str].map(c => c.charCodeAt(0));
+  return Buffer.from([...asNumber]);
 }

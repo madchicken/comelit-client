@@ -1,4 +1,4 @@
-import { ClimaMode, ThermoSeason } from './comelit-client';
+import {ClimaMode, ThermoSeason} from './comelit-client';
 
 export type DEVICE_STATUS = '0' | '1' | '2';
 
@@ -278,3 +278,73 @@ export interface ConsoleLike {
   debug: (message?: any, ...optionalParams: any[]) => void;
   error: (message?: any, ...optionalParams: any[]) => void;
 }
+
+// ICONA types
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const ViperChannelType = {
+  SERVER_INFO: 20,
+  PUSH: 2,
+  UAUT: 2,
+  UCFG: 3,
+  CTPP: 7,
+  CSPB: 8,
+};
+
+/*
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const allConfigExample: ConfigurationResponse = {
+  message: 'get-configuration',
+  'message-type': 'response',
+  'message-id': 3,
+  'response-code': 200,
+  'response-string': 'OK',
+  'viper-server': <ViperServer>{
+    'local-address': '192.168.0.66',
+    'local-tcp-port': 64100,
+    'local-udp-port': 64100,
+    'remote-address': '',
+    'remote-tcp-port': 64100,
+    'remote-udp-port': 64100,
+  },
+  'viper-client': <ViperClient>{description: 'SU0EG'},
+  'viper-p2p': {
+    mqtt: <MQTTConfig>{
+      role: 'a',
+      base: 'HSrv/0025291701EC/vip/COMHUB01/sdp',
+      server: 'tls://hub-vip3.cloud.comelitgroup.com:443',
+      auth: {method: ['CCS_TOKEN', 'CCS_DEVICE']},
+    },
+    http: <HTTPConfig>{role: 'a', duuid: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'},
+    stun: <STUNConfig>{
+      server: ['turn-1-de.cloud.comelitgroup.com:3478', 'turn-1-de.cloud.comelitgroup.com:3478'],
+    },
+  },
+  vip: {
+    enabled: true,
+    'apt-address': 'COMHUB01',
+    'apt-subaddress': 2,
+    'logical-subaddress': 2,
+    'apt-config': {
+      description: '',
+      'call-divert-busy-en': false,
+      'call-divert-address': '',
+      'virtual-key-enabled': false,
+    },
+    'user-parameters': {
+      forced: true,
+      'apt-address-book': [],
+      'switchboard-address-book': [],
+      'camera-address-book': [],
+      'rtsp-camera-address-book': [],
+      'entrance-address-book': [],
+      'actuator-address-book': [],
+      'opendoor-address-book': [
+        <DoorItem>{name: 'CANCELLO', 'apt-address': '00000100', 'output-index': 2, 'secure-mode': false},
+      ],
+      'opendoor-actions': [<OpenDoorAction>{action: 'peer', 'apt-address': '', 'output-index': 1}],
+    },
+  },
+  'building-config': <BuildingConfig>{description: 'your building'},
+};
+*/
