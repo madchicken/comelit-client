@@ -57,11 +57,11 @@ export function bytesToHex(byteArray: Buffer): string {
   }).join('\n');
 }
 
-export function number16ToHex(n: number): string {
+export function numberToHex(n: number): string {
   let x = n;
   const byteArray = [];
   while (x !== 0) {
-    byteArray.push(x & 0b0000000011111111);
+    byteArray.push(x & 0b11111111);
     x = x >> 8;
   }
   return byteArray.reverse().reduce((output, elem) => output + ('0' + elem.toString(16)).slice(-2) + " ", '');

@@ -25,7 +25,7 @@ import {
     VIPConfig
 } from "./icona/types";
 import chalk from "chalk";
-import {bytesToHex, NULL, number16ToHex, stringToBuffer} from "./utils";
+import {bytesToHex, NULL, numberToHex, stringToBuffer} from "./utils";
 
 const ICONA_BRIDGE_PORT = 64100;
 
@@ -203,7 +203,7 @@ export class IconaBridgeClient {
         const p = PacketMessage.createBinaryPacketFromStrings(this.id, 1, MessageType.COMMAND, channel, additionalData);
         await this.writeBytePacket(p);
         const response = await this.readResponse();
-        this.logger.info(`Opened channel ${channel}, sequence is ${response.sequence} and requestId is ${number16ToHex(this.id)}`);
+        this.logger.info(`Opened channel ${channel}, sequence is ${response.sequence} and requestId is ${numberToHex(this.id)}`);
         if (response.type === BinaryResponseType.BINARY && response.sequence === 2) {
             return {channel, sequence: response.sequence, id: this.id}
         }
@@ -215,7 +215,7 @@ export class IconaBridgeClient {
         const p = PacketMessage.createBinaryPacketFromStrings(channelData.id, ++channelData.sequence, MessageType.END);
         await this.writeBytePacket(p);
         const response = await this.readResponse();
-        this.logger.info(`Closed channel ${channelData.channel}, sequence id is ${response.sequence} and requestId is ${number16ToHex(channelData.id)}`);
+        this.logger.info(`Closed channel ${channelData.channel}, sequence id is ${response.sequence} and requestId is ${numberToHex(channelData.id)}`);
         if (response.type === BinaryResponseType.BINARY && response.sequence === channelData.sequence + 1) {
             return {...channelData, sequence: response.sequence}
         }
