@@ -52,7 +52,7 @@ export function bytesToHex(byteArray: Buffer): string {
   const chunks = chunk(byteArray, 16);
   return chunks.map(c => {
     const hex = c.reduce((output, elem) => output + ('0' + elem.toString(16)).slice(-2) + " ", '');
-    const ascii = c.map(c => c <= 128 && c > 31 ? String.fromCharCode(c) : ".").join('');
+    const ascii = c.map(c => c <= 128 && c > 31 ? String.fromCharCode(c) : '·').join('');
     return `${padEnd(hex, 48)}\t${ascii}`;
   }).join('\n');
 }
