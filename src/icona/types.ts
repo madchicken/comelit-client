@@ -103,7 +103,7 @@ interface ViperP2PConfig {
     stun: STUNConfig;
 }
 
-interface DoorItem {
+export interface DoorItem {
     name: string;
     "apt-address": string;
     "output-index": number;

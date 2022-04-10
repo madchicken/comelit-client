@@ -8,6 +8,7 @@ import {
     DecodedResponse,
     getInt64Bytes,
     MessageType,
+    NO_SEQ,
     OpenChannelData,
     PacketMessage,
     readJSON
@@ -18,15 +19,15 @@ import {
     BaseMessage,
     BaseResponse,
     ConfigurationResponse,
+    DoorItem,
     PushInfoMessage,
     ServerInfoMessage,
     VIPConfig
 } from "./icona/types";
 import chalk from "chalk";
-import {bytesToHex, stringToBuffer} from "./utils";
+import {bytesToHex, NULL, number16ToHex, stringToBuffer} from "./utils";
 
 const ICONA_BRIDGE_PORT = 64100;
-let seq = 0;
 
 function accessMessage(requestId: number, token: string) {
     const json = {
@@ -77,10 +78,29 @@ function getInfoMessage(requestId: number): PacketMessage {
     return PacketMessage.createJSONPacket<ServerInfoMessage>(requestId, json);
 }
 
-function getOpenDoorMessage(requestId: number, vip: VIPConfig) {
-    const unkData = Buffer.from([0x70, 0xab, 0x29, 0x9f, 0x00, 0x0d, 0x00, 0x2d]);
-    const hubData = stringToBuffer(vip["apt-address"]);
-    return PacketMessage.createBinaryPacketFromBuffers(requestId, MessageType.OPEN_DOOR, unkData, hubData);
+function getInitOpenDoorMessage(requestId: number, vip: VIPConfig) {
+    const buffers: Buffer[] = [
+        Buffer.from([0xc0, 0x18, 0x5c, 0x8b]), // ??
+        Buffer.from([0x2b, 0x73, 0x00, 0x11]), // ??
+        Buffer.from([0x00, 0x40, 0xac, 0x23]), // ??
+        stringToBuffer(`${vip["apt-address"]}${vip["apt-subaddress"]}`, true),
+        Buffer.from([0x10, 0x0e]), // 3600
+        Buffer.from([0x00, 0x00, 0x00, 0x00]), // 0
+        Buffer.from([0xff, 0xff, 0xff, 0xff]), // -1
+        stringToBuffer(`${vip["apt-address"]}${vip["apt-subaddress"]}`, true),
+        stringToBuffer(`${vip["apt-address"]}`, true),
+        NULL
+    ];
+
+    return PacketMessage.createBinaryPacketFromBuffers(requestId, ...buffers);
+}
+
+
+function getOpenDoorMessage(requestId: number, vip: VIPConfig, doorItem: DoorItem, confirm = false) {
+    const hubData = stringToBuffer(`${vip["apt-address"]}${vip["apt-subaddress"]}`, true);
+    const unkData = Buffer.from([0x70, 0xab, 0x2a, 0x0a, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff]);
+    const aptAddr = stringToBuffer(`${doorItem["apt-address"]}`, true);
+    return PacketMessage.createBinaryPacketFromBuffers(requestId, confirm ? Buffer.from([MessageType.OPEN_DOOR_CONFIRM]) : Buffer.from([MessageType.OPEN_DOOR]), unkData, hubData, aptAddr, NULL);
 }
 
 export class IconaBridgeClient {
@@ -91,6 +111,7 @@ export class IconaBridgeClient {
 
     readonly logger: ConsoleLike;
     private socket: PromiseSocket<net.Socket>;
+    private _socket: net.Socket;
     private id: number;
 
     constructor(
@@ -105,7 +126,8 @@ export class IconaBridgeClient {
     }
 
     async connect() {
-        this.socket = new PromiseSocket(new net.Socket());
+        this._socket = new net.Socket();
+        this.socket = new PromiseSocket(this._socket);
         this.socket.setTimeout(5000);
         this.logger.info(`Connecting to ${this.host}:${this.port}`);
         await this.socket.connect(this.port, this.host);
@@ -114,7 +136,7 @@ export class IconaBridgeClient {
     }
 
     private async writeBytePacket(packet: PacketMessage) {
-        this.logger.debug(`Writing bytes to socket: ${bytesToHex(packet.bytes)} (ASCII: ${bufferToASCIIString(packet.bytes)})`);
+        this.logger.debug(`Writing bytes to socket: \n${bytesToHex(packet.bytes)}`);
         await this.socket.writeAll(packet.bytes);
     }
 
@@ -125,18 +147,18 @@ export class IconaBridgeClient {
             const size = header.readUIntLE(2, 2);
             let requestId = header.readUIntLE(4, 4);
             const body = (await this.socket.read(size)) as Buffer;
-            return this.decodeResponse<T>(requestId, header, body);
+            return this.decodeResponse<T>(requestId, body);
         } catch (e) {
             this.logger.warn('No bytes to read, skipping');
             return null;
         }
     }
 
-    private decodeResponse<T extends BaseMessage>(requestId: number, header: Buffer, body: Buffer): DecodedResponse<T> {
+    private decodeResponse<T extends BaseMessage>(requestId: number, body: Buffer): DecodedResponse<T> {
         if (requestId === 0) {
             // Request ID is at the end of the message for binary protocol
             const number = body.readUIntLE(0, 2);
-            seq = body.readUIntLE(2, 2);
+            const seq = body.readUIntLE(2, 2);
             switch (number) {
                 case MessageType.COMMAND: {
                     const subSize = body.readUIntLE(4, 4);
@@ -150,15 +172,26 @@ export class IconaBridgeClient {
                     this.logger.info("No handler implemented for message type " + getInt64Bytes(number).map(n => `0x${n}`).join(' '));
                     return null;
             }
-        } else {
+        } else { // data packet
             const first = body.readUIntLE(0, 1);
-            if (first === 0x7b) { // check if the first char is an open curly bracket
-                // JSON MESSAGE
-                return {requestId, sequence: seq, type: BinaryResponseType.JSON, json: readJSON<T>(body)};
+            const second = body.readUIntLE(1, 1);
+            switch (first) {
+                case 0x7b:
+                    // the first char is an open curly bracket (JSON MESSAGE)
+                    return {requestId, sequence: NO_SEQ, type: BinaryResponseType.JSON, json: readJSON<T>(body)};
+                default:
+                    // binary data (still not fully reversed)
+                    return this.decodeBinaryResponse(requestId, first, second, body);
             }
-            // binary data (still not fully reversed)
-            return {requestId, sequence: seq, type: BinaryResponseType.BINARY};
         }
+    }
+
+    decodeBinaryResponse<T extends BaseMessage>(requestId: number, subtype: number, type: number, body: Buffer): DecodedResponse<T> {
+        switch (type) {
+            case 0x18: // open door first response
+                this.logger.info('Open door: ' + bufferToASCIIString(body));
+        }
+        return {requestId, sequence: NO_SEQ, type: BinaryResponseType.BINARY};
     }
 
     async shutdown() {
@@ -170,7 +203,7 @@ export class IconaBridgeClient {
         const p = PacketMessage.createBinaryPacketFromStrings(this.id, 1, MessageType.COMMAND, channel, additionalData);
         await this.writeBytePacket(p);
         const response = await this.readResponse();
-        this.logger.info(`Opened channel ${channel}, sequence is ${response.sequence} and requestId is ${this.id}`);
+        this.logger.info(`Opened channel ${channel}, sequence is ${response.sequence} and requestId is ${number16ToHex(this.id)}`);
         if (response.type === BinaryResponseType.BINARY && response.sequence === 2) {
             return {channel, sequence: response.sequence, id: this.id}
         }
@@ -182,7 +215,7 @@ export class IconaBridgeClient {
         const p = PacketMessage.createBinaryPacketFromStrings(channelData.id, ++channelData.sequence, MessageType.END);
         await this.writeBytePacket(p);
         const response = await this.readResponse();
-        this.logger.info(`Closed channel ${channelData.channel}, sequence id is ${response.sequence} and requestId is ${this.id}`);
+        this.logger.info(`Closed channel ${channelData.channel}, sequence id is ${response.sequence} and requestId is ${number16ToHex(channelData.id)}`);
         if (response.type === BinaryResponseType.BINARY && response.sequence === channelData.sequence + 1) {
             return {...channelData, sequence: response.sequence}
         }
@@ -246,10 +279,16 @@ export class IconaBridgeClient {
         return null;
     }
 
-    async openDoor(vip: VIPConfig) {
-        const channelData = await this.openChanel(Channel.CTPP, `${vip["apt-address"]}${vip["apt-subaddress"]}`);
-        const packetMessage = getOpenDoorMessage(channelData.id, vip);
+    async openDoor(vip: VIPConfig, doorItem: DoorItem) {
+        const ctpp = await this.openChanel(Channel.CTPP, `${vip["apt-address"]}${vip["apt-subaddress"]}`);
+        const initMessage = getInitOpenDoorMessage(ctpp.id, vip);
+        await this.writeBytePacket(initMessage);
+        const resp1 = await this.readResponse<ConfigurationResponse>();
+        this.logger.info(`${JSON.stringify(resp1)}`);
+        const packetMessage = getOpenDoorMessage(ctpp.id, vip, doorItem);
         await this.writeBytePacket(packetMessage);
+        const confirmMessage = getOpenDoorMessage(ctpp.id, vip, doorItem, true);
+        await this.writeBytePacket(confirmMessage);
         const resp = await this.readResponse<ConfigurationResponse>();
         this.logger.info(`${JSON.stringify(resp)}`);
     }

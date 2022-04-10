@@ -1,7 +1,5 @@
 import {BaseMessage} from "./types";
-import {stringToBuffer} from "../utils";
-
-const NULL = Buffer.from([0x00]);
+import {NULL, stringToBuffer} from "../utils";
 
 export function bufferToString(bytes: Buffer) {
     return [...new Uint8Array(bytes)].map((x: number) => x.toString(16).padStart(2, '0')).join(' ');
@@ -22,11 +20,13 @@ export function getInt64Bytes( x ): number[] {
 }
 
 const HEADER = [0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-const NO_SEQ = -1;
+export const NO_SEQ = -1;
 export enum MessageType {
     COMMAND = 0xabcd,
     END = 0x01ef,
-    OPEN_DOOR = 0x18c0,
+    OPEN_DOOR_INIT = 0x18c0,
+    OPEN_DOOR = 0x1800,
+    OPEN_DOOR_CONFIRM = 0x1820,
 }
 
 export enum Channel {
@@ -34,6 +34,7 @@ export enum Channel {
     UCFG = 'UCFG',
     INFO = 'INFO',
     CTPP = 'CTPP',
+    CSBP = 'CSBP',
     PUSH = 'PUSH',
 }
 
@@ -75,14 +76,13 @@ export class PacketMessage {
         return bufferToString(this.bytes);
     }
 
-    public static createBinaryPacketFromBuffers(requestId: number,  type: MessageType, ...messages: Buffer[]): PacketMessage {
+    public static createBinaryPacketFromBuffers(requestId: number, ...messages: Buffer[]): PacketMessage {
         const header = Buffer.from(HEADER);
-        const magicNumber = Buffer.alloc(4);
-        magicNumber.writeUIntLE(type, 0,2);
-        const totalLength = [header, magicNumber, ...messages]
+        header.writeUIntLE(requestId, 4, 2);
+        const totalLength = [header, ...messages]
             .map(b => b.length)
             .reduce((s, l) => (s += l), 0);
-        const buffer = Buffer.concat([header, magicNumber, ...messages], totalLength);
+        const buffer = Buffer.concat([header, ...messages], totalLength);
         buffer.writeUIntLE(buffer.length - HEADER.length, 2, 2);
         return new PacketMessage(requestId, NO_SEQ, buffer);
     }
@@ -125,6 +125,28 @@ export class PacketMessage {
         buffer.writeUIntLE(text.length, 2, 2); // length
         buffer.writeUIntLE(requestId, 4, 2); // requestId
         return new PacketMessage(requestId, NO_SEQ, buffer);
+    }
+}
+
+export class PacketBuilder {
+    private bytes: Buffer;
+    readonly requestId: number;
+    readonly seq: number;
+
+    constructor(requestId: number, type: MessageType, seq?: number) {
+        this.requestId = requestId;
+        this.seq = seq || NO_SEQ;
+        const magicNumber = Buffer.alloc(4);
+        magicNumber.writeUIntLE(type, 0,2);
+        if (seq) {
+            magicNumber.writeUIntLE(seq, 2, 2);
+        }
+        let header = Buffer.from(HEADER);
+        this.bytes = Buffer.concat([header, magicNumber], header.length + magicNumber.length);
+    }
+
+    build(): PacketMessage {
+        return new PacketMessage(this.requestId, this.seq, this.bytes);
     }
 }
 
