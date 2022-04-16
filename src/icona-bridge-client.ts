@@ -153,7 +153,7 @@ export class IconaBridgeClient {
         this.socket.setTimeout(5000);
         this.logger.info(`Connecting to ${this.host}:${this.port}`);
         await this.socket.connect(this.port, this.host);
-        this.socket.socket.setMaxListeners(20);
+        this.socket.socket.setMaxListeners(40);
         this.logger.info('connected');
     }
 

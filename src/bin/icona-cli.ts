@@ -10,6 +10,7 @@ interface ClientOptions {
     host: string;
     token: string;
     output: string;
+    command?: string;
     door?: string;
     addressbook?: string;
     deviceToken?: string;
@@ -41,27 +42,18 @@ const options: ClientOptions = yargs
     .demandOption('token')
     .command('get-config <addressbook>', 'Get configuration of ICONA bridge', () => {
         yargs.positional('addressbook', {
-            describe: 'Comma separated list of address Book to request (none or all)',
+            describe: 'Name of the address Book to request (valid values are none or all)',
             type: 'string',
             demandOption: true,
         });
     })
     .command('server-info', 'Get server information')
-    .command('push-info <deviceToken>', 'Get server push information', () => {
-        yargs.positional('deviceToken', {
-            describe: 'Device token',
-            type: 'string',
-            demandOption: true,
-        });
-    })
-    .command('open-door <deviceToken> <door>', 'Open a door using ICONA bridge', () => {
-        yargs.positional('deviceToken', {
-            describe: 'Device token',
-            type: 'string',
-            demandOption: true,
-        }).positional('door', {
+    .command('list-doors', 'List all available doors using ICONA bridge')
+    .command('open-door <door>', 'Open a door using ICONA bridge', () => {
+        yargs.option('door', {
             describe: 'Name of the door to open',
             type: 'string',
+            demandOption: true
         });
     })
     .demandCommand()
@@ -83,7 +75,10 @@ async function run() {
                 break;
             case 'open-door':
                 await openDoor();
-                break
+                break;
+            case 'list-doors':
+                await listDoors();
+                break;
             default:
                 console.error(chalk.red(`Unrecognized command ${command}`));
         }
@@ -130,6 +125,19 @@ async function pushInfo() {
         console.log(serialize(res, options.output));
         await client.shutdown();
     }
+}
+
+async function listDoors() {
+    const client = new IconaBridgeClient(options.host);
+    await client.connect();
+    const code = await client.authenticate(options.token);
+    if (code === 200) {
+        const addressBookAll = await client.getConfig('all');
+        console.log(chalk.green(`Available doors:`));
+        console.log(serialize(addressBookAll.vip["user-parameters"]["opendoor-address-book"], options.output));
+        await client.shutdown();
+    }
+
 }
 
 async function openDoor() {
