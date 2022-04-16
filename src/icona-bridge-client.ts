@@ -78,7 +78,7 @@ function getInfoMessage(requestId: number): PacketMessage {
     return PacketMessage.createJSONPacket<ServerInfoMessage>(requestId, json);
 }
 
-function getInitOpenDoorMessage(requestId: number, vip: VIPConfig) {
+function getUnknownOpenDoorMessage(requestId: number, vip: VIPConfig) {
     const buffers: Buffer[] = [
         Buffer.from([0xc0, 0x18, 0x5c, 0x8b]), // ??
         Buffer.from([0x2b, 0x73, 0x00, 0x11]), // ??
@@ -95,12 +95,35 @@ function getInitOpenDoorMessage(requestId: number, vip: VIPConfig) {
     return PacketMessage.createBinaryPacketFromBuffers(requestId, ...buffers);
 }
 
-
 function getOpenDoorMessage(requestId: number, vip: VIPConfig, doorItem: DoorItem, confirm = false) {
-    const hubData = stringToBuffer(`${vip["apt-address"]}${vip["apt-subaddress"]}`, true);
-    const unkData = Buffer.from([0x70, 0xab, 0x2a, 0x0a, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff]);
-    const aptAddr = stringToBuffer(`${doorItem["apt-address"]}`, true);
-    return PacketMessage.createBinaryPacketFromBuffers(requestId, confirm ? Buffer.from([MessageType.OPEN_DOOR_CONFIRM]) : Buffer.from([MessageType.OPEN_DOOR]), unkData, hubData, aptAddr, NULL);
+    const buffers: Buffer[] = [
+        confirm ? Buffer.from([MessageType.OPEN_DOOR_CONFIRM]) : Buffer.from([MessageType.OPEN_DOOR]),
+        Buffer.from([0x5c, 0x8b]),
+        Buffer.from([0x2c, 0x74, 0x00, 0x00]),
+        Buffer.from([0xff, 0xff, 0xff, 0xff]), // -1
+        stringToBuffer(`${vip["apt-address"]}${vip["apt-subaddress"]}`, true),
+        doorItem ? stringToBuffer(`${doorItem["apt-address"]}`) : stringToBuffer(`${vip["apt-address"]}`, true),
+        NULL
+    ]
+
+    return PacketMessage.createBinaryPacketFromBuffers(requestId, ...buffers);
+}
+
+function getInitOpenDoorMessage(requestId: number, vip: VIPConfig, doorItem: DoorItem) {
+    const buffers: Buffer[] = [
+        Buffer.from([0xc0, 0x18, 0x70, 0xab]), // ??
+        Buffer.from([0x29, 0x9f, 0x00, 0xd]), // ??
+        Buffer.from([0x00, 0x2d]), // ??
+        stringToBuffer(`${doorItem["apt-address"]}`, true),
+        NULL,
+        Buffer.from([doorItem["output-index"], 0x0, 0x0, 0x0]), // 3600
+        Buffer.from([0xff, 0xff, 0xff, 0xff]), // -1
+        stringToBuffer(`${vip["apt-address"]}${vip["apt-subaddress"]}`, true),
+        stringToBuffer(`${doorItem["apt-address"]}`, true),
+        NULL
+    ];
+
+    return PacketMessage.createBinaryPacketFromBuffers(requestId, ...buffers);
 }
 
 export class IconaBridgeClient {
@@ -195,7 +218,6 @@ export class IconaBridgeClient {
     }
 
     async shutdown() {
-        await Promise.all([...this.openChannels.values()].map(async (v) => this.closeChanel(v)));
         await this.socket.end();
     }
 
@@ -303,19 +325,29 @@ export class IconaBridgeClient {
     async openDoorInit(vip: VIPConfig) {
         const ctpp = await this.openChanel(Channel.CTPP, `${vip["apt-address"]}${vip["apt-subaddress"]}`);
         // await this.openChanel(Channel.CSPB);
-        const initMessage = getInitOpenDoorMessage(ctpp.id, vip);
+        const initMessage = getUnknownOpenDoorMessage(ctpp.id, vip);
         await this.writeBytePacket(initMessage);
         const resp1 = await this.readResponse<any>();
-        this.logger.info(`CTPP:\n${JSON.stringify(resp1)}`);
+        this.logger.info(`CTPP 1:\n${JSON.stringify(resp1)}`);
+        const resp2 = await this.readResponse<any>();
+        this.logger.info(`CTPP 2:\n${JSON.stringify(resp2)}`);
         return ctpp;
     }
 
     async openDoor(vip: VIPConfig, doorItem: DoorItem, ctpp: OpenChannelData) {
-        const packetMessage = getOpenDoorMessage(ctpp.id, vip, doorItem);
+        const packetMessage = getOpenDoorMessage(ctpp.id, vip, null);
         await this.writeBytePacket(packetMessage);
-        const confirmMessage = getOpenDoorMessage(ctpp.id, vip, doorItem, true);
+        const confirmMessage = getOpenDoorMessage(ctpp.id, vip, null, true);
         await this.writeBytePacket(confirmMessage);
+        const message1 = getInitOpenDoorMessage(ctpp.id, vip, doorItem);
+        await this.writeBytePacket(message1);
         const resp = await this.readResponse<ConfigurationResponse>();
         this.logger.info(`${JSON.stringify(resp)}`);
+        const resp2 = await this.readResponse<ConfigurationResponse>();
+        this.logger.info(`${JSON.stringify(resp2)}`);
+        const packetMessage1 = getOpenDoorMessage(ctpp.id, vip, doorItem);
+        await this.writeBytePacket(packetMessage1);
+        const confirmMessage1 = getOpenDoorMessage(ctpp.id, vip, doorItem, true);
+        await this.writeBytePacket(confirmMessage1);
     }
 }
