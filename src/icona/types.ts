@@ -39,14 +39,14 @@ export interface ConfigurationResponse extends BaseResponse {
     'building-config': BuildingConfig;
 }
 
-interface AptConfig {
+export interface AptConfig {
     description: string;
     'call-divert-busy-en': boolean;
     'call-divert-address': string;
     'virtual-key-enabled': boolean;
 }
 
-interface UserParameters {
+export interface UserParameters {
     forced: boolean;
     'apt-address-book': any[];
     'switchboard-address-book': any[];
@@ -68,7 +68,7 @@ export interface VIPConfig {
 }
 
 // all config response example
-interface ViperServer {
+export interface ViperServer {
     "local-address": string;
     "local-tcp-port": number;
     "local-udp-port": number;
@@ -77,27 +77,27 @@ interface ViperServer {
     "remote-udp-port": number;
 }
 
-interface ViperClient {
+export interface ViperClient {
     description: string;
 }
 
-interface MQTTConfig {
+export interface MQTTConfig {
     role: string;
     base: string;
     server: string;
     auth: { method: string[] };
 }
 
-interface HTTPConfig {
+export interface HTTPConfig {
     role: string;
     duuid: string;
 }
 
-interface STUNConfig {
+export interface STUNConfig {
     server: string[];
 }
 
-interface ViperP2PConfig {
+export interface ViperP2PConfig {
     mqtt: MQTTConfig;
     http: HTTPConfig;
     stun: STUNConfig;
@@ -110,12 +110,12 @@ export interface DoorItem {
     "secure-mode": boolean;
 }
 
-interface OpenDoorAction {
+export interface OpenDoorAction {
     action: string;
     "apt-address": string;
     "output-index": number;
 }
 
-interface BuildingConfig {
+export interface BuildingConfig {
     description: string;
 }
