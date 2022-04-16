@@ -28,7 +28,6 @@ const options: ClientOptions = yargs
             alias: 't',
             type: 'string',
             demandOption: true,
-            // default: '9f32acb3e7f452f86d43e1b7c9a3eac4',
         },
         output: {
             description: 'Output mode: json, yaml',
@@ -42,7 +41,7 @@ const options: ClientOptions = yargs
     .demandOption('token')
     .command('get-config <addressbook>', 'Get configuration of ICONA bridge', () => {
         yargs.positional('addressbook', {
-            describe: 'Address Book to request (none or all)',
+            describe: 'Comma separated list of address Book to request (none or all)',
             type: 'string',
             demandOption: true,
         });
@@ -102,7 +101,7 @@ async function config() {
     const code = await client.authenticate(options.token);
     if (code === 200) {
         const res = await client.getConfig(options.addressbook);
-        console.log(chalk.green('Address books ALL response: '));
+        console.log(chalk.green(`Address books ${options.addressbook} response: `));
         console.log(serialize(res, options.output));
         await client.shutdown();
     }
@@ -139,13 +138,18 @@ async function openDoor() {
     try {
         const code = await client.authenticate(options.token);
         if (code === 200) {
-            const res = await client.getConfig('all');
-            console.log(serialize(res, options.output));
-            let item = res.vip["user-parameters"]["opendoor-address-book"].find(doorItem => doorItem.name === options.door);
+            const addressBook = await client.getConfig('none', false);
+            console.log(serialize(addressBook, options.output));
+            const serverInfo = await client.getServerInfo(false);
+            console.log(serialize(serverInfo, options.output));
+            const ctpp = await client.openDoorInit(addressBook.vip);
+            const addressBookAll = await client.getConfig('all', false);
+            console.log(serialize(addressBookAll, options.output));
+            const item = addressBookAll.vip["user-parameters"]["opendoor-address-book"].find(doorItem => doorItem.name === options.door);
             console.log(`Opening door ${item.name} at address ${item["apt-address"]} and index ${item["output-index"]}`);
             if (item) {
                 console.log(serialize(await client.getServerInfo(), options.output));
-                await client.openDoor(res.vip, item);
+                await client.openDoor(addressBookAll.vip, item, ctpp);
             }
             await client.shutdown();
         }

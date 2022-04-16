@@ -106,13 +106,12 @@ function getOpenDoorMessage(requestId: number, vip: VIPConfig, doorItem: DoorIte
 export class IconaBridgeClient {
     private readonly host: string;
     private readonly port: number;
-    private hubName: string;
-    private vipAddress: string;
 
     readonly logger: ConsoleLike;
     private socket: PromiseSocket<net.Socket>;
     private _socket: net.Socket;
     private id: number;
+    private openChannels: Map<Channel, OpenChannelData> = new Map<Channel, OpenChannelData>();
 
     constructor(
         host: string,
@@ -147,6 +146,7 @@ export class IconaBridgeClient {
             const size = header.readUIntLE(2, 2);
             let requestId = header.readUIntLE(4, 4);
             const body = (await this.socket.read(size)) as Buffer;
+            this.logger.debug(`Read bytes from socket (size: ${size}):\n${bytesToHex(body)}`)
             return this.decodeResponse<T>(requestId, body);
         } catch (e) {
             this.logger.warn('No bytes to read, skipping');
@@ -195,17 +195,28 @@ export class IconaBridgeClient {
     }
 
     async shutdown() {
+        await Promise.all([...this.openChannels.values()].map(async (v) => this.closeChanel(v)));
         await this.socket.end();
     }
 
     async openChanel(channel: Channel, additionalData?: string): Promise<OpenChannelData> {
+        if(this.openChannels.has(channel)) {
+            return Promise.resolve(this.openChannels.get(channel));
+        }
+
         this.id++;
+        const openChannelData = {channel, sequence: 1, id: this.id};
+        this.openChannels.set(channel, openChannelData);
         const p = PacketMessage.createBinaryPacketFromStrings(this.id, 1, MessageType.COMMAND, channel, additionalData);
         await this.writeBytePacket(p);
+
         const response = await this.readResponse();
-        this.logger.info(`Opened channel ${channel}, sequence is ${response.sequence} and requestId is ${numberToHex(this.id)}`);
-        if (response.type === BinaryResponseType.BINARY && response.sequence === 2) {
-            return {channel, sequence: response.sequence, id: this.id}
+        if(response) {
+            this.logger.info(`Opened channel ${channel}, sequence is ${response.sequence} and requestId is ${numberToHex(this.id)}`);
+            if (response.type === BinaryResponseType.BINARY && response.sequence === 2) {
+                openChannelData.sequence = response.sequence;
+                return openChannelData
+            }
         }
         this.logger.error(chalk.red(`Error trying opening channel ${channel}, received wrong response from server`));
         await this.shutdown();
@@ -217,6 +228,7 @@ export class IconaBridgeClient {
         const response = await this.readResponse();
         this.logger.info(`Closed channel ${channelData.channel}, sequence id is ${response.sequence} and requestId is ${numberToHex(channelData.id)}`);
         if (response.type === BinaryResponseType.BINARY && response.sequence === channelData.sequence + 1) {
+            this.openChannels.delete(channelData.channel);
             return {...channelData, sequence: response.sequence}
         }
         this.logger.error(chalk.red(`Error trying closing channel ${channelData.channel}, received wrong response from server`));
@@ -237,54 +249,70 @@ export class IconaBridgeClient {
         return 500;
     }
 
-    async getConfig(addressbooks: string): Promise<ConfigurationResponse> {
+    async getConfig(addressbooks: string, closeChannel = true): Promise<ConfigurationResponse> {
         const channelData = await this.openChanel(Channel.UCFG);
-
-        const packetMessage = getConfigMessage(channelData.id, addressbooks);
-        await this.writeBytePacket(packetMessage);
-        const resp = await this.readResponse<ConfigurationResponse>();
-        if (resp && resp.type === BinaryResponseType.JSON) {
-            await this.closeChanel(channelData);
-            return resp.json;
+        if(channelData) {
+            const packetMessage = getConfigMessage(channelData.id, addressbooks);
+            await this.writeBytePacket(packetMessage);
+            const resp = await this.readResponse<ConfigurationResponse>();
+            if (resp && resp.type === BinaryResponseType.JSON) {
+                if (closeChannel) {
+                    await this.closeChanel(channelData);
+                }
+                return resp.json;
+            }
+            this.logger.error(chalk.red(`Error trying to get configuration, received wrong response from server: ${JSON.stringify(resp)}`));
         }
-        this.logger.error(chalk.red(`Error trying to get configuration, received wrong response from server: ${JSON.stringify(resp)}`));
         return null;
     }
 
-    async getServerInfo(): Promise<ConfigurationResponse> {
+    async getServerInfo(closeChannel = true): Promise<ConfigurationResponse> {
         const channelData = await this.openChanel(Channel.INFO);
-
-        const packetMessage = getInfoMessage(channelData.id);
-        await this.writeBytePacket(packetMessage);
-        const resp = await this.readResponse<ConfigurationResponse>();
-        if (resp && resp.type === BinaryResponseType.JSON) {
-            await this.closeChanel(channelData);
-            return resp.json;
+        if(channelData) {
+            const packetMessage = getInfoMessage(channelData.id);
+            await this.writeBytePacket(packetMessage);
+            const resp = await this.readResponse<ConfigurationResponse>();
+            if (resp && resp.type === BinaryResponseType.JSON) {
+                if (closeChannel) {
+                    await this.closeChanel(channelData);
+                }
+                return resp.json;
+            }
+            this.logger.error(chalk.red(`Error trying to get server info, received wrong response from server: ${JSON.stringify(resp)}`));
         }
-        this.logger.error(chalk.red(`Error trying to get server info, received wrong response from server: ${JSON.stringify(resp)}`));
         return null;
     }
 
-    async getPushInfo(vip: VIPConfig, deviceToken: string): Promise<ConfigurationResponse> {
+    async getPushInfo(vip: VIPConfig, deviceToken: string, closeChannel = true): Promise<ConfigurationResponse> {
         const channelData = await this.openChanel(Channel.PUSH);
-
-        const packetMessage = getPushInfoMessage(channelData.id, vip, deviceToken);
-        await this.writeBytePacket(packetMessage);
-        const resp = await this.readResponse<ConfigurationResponse>();
-        if (resp && resp.type === BinaryResponseType.JSON) {
-            await this.closeChanel(channelData);
-            return resp.json;
+        if(channelData) {
+            const packetMessage = getPushInfoMessage(channelData.id, vip, deviceToken);
+            await this.writeBytePacket(packetMessage);
+            const resp = await this.readResponse<ConfigurationResponse>();
+            if (resp && resp.type === BinaryResponseType.JSON) {
+                if (closeChannel) {
+                    await this.closeChanel(channelData);
+                }
+                return resp.json;
+            }
+            this.logger.error(chalk.red(`Error trying to get push info, received wrong response from server: ${JSON.stringify(resp)}`));
         }
-        this.logger.error(chalk.red(`Error trying to get push info, received wrong response from server: ${JSON.stringify(resp)}`));
         return null;
     }
 
-    async openDoor(vip: VIPConfig, doorItem: DoorItem) {
+    async openDoorInit(vip: VIPConfig) {
         const ctpp = await this.openChanel(Channel.CTPP, `${vip["apt-address"]}${vip["apt-subaddress"]}`);
+        await this.openChanel(Channel.CSPB);
         const initMessage = getInitOpenDoorMessage(ctpp.id, vip);
         await this.writeBytePacket(initMessage);
-        const resp1 = await this.readResponse<ConfigurationResponse>();
-        this.logger.info(`${JSON.stringify(resp1)}`);
+        /*
+                const resp1 = await this.readResponse<any>();
+                this.logger.info(`${JSON.stringify(resp1)}`);
+        */
+        return ctpp;
+    }
+
+    async openDoor(vip: VIPConfig, doorItem: DoorItem, ctpp: OpenChannelData) {
         const packetMessage = getOpenDoorMessage(ctpp.id, vip, doorItem);
         await this.writeBytePacket(packetMessage);
         const confirmMessage = getOpenDoorMessage(ctpp.id, vip, doorItem, true);

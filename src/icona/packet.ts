@@ -34,7 +34,7 @@ export enum Channel {
     UCFG = 'UCFG',
     INFO = 'INFO',
     CTPP = 'CTPP',
-    CSBP = 'CSBP',
+    CSPB = 'CSPB',
     PUSH = 'PUSH',
 }
 
