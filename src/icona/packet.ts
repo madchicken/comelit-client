@@ -99,9 +99,9 @@ export class PacketMessage {
                 const info = Buffer.alloc(4);
                 let text = stringToBuffer(s);
                 if (isFirst) {
-                    const id = Buffer.alloc(4);
-                    id.writeUIntLE(requestId, 0, 4);
-                    text = Buffer.concat([text, id]);
+                    const id = Buffer.alloc(2);
+                    id.writeUIntLE(requestId, 0, 2);
+                    text = Buffer.concat([text, id, NULL]);
                     info.writeUIntLE(s.length + id.length + 1, 0, 4);
                 } else {
                     info.writeUIntLE(s.length + 1, 0, 4);

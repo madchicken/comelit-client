@@ -142,13 +142,13 @@ async function openDoor() {
             console.log(serialize(addressBook, options.output));
             const serverInfo = await client.getServerInfo(false);
             console.log(serialize(serverInfo, options.output));
-            const ctpp = await client.openDoorInit(addressBook.vip);
             const addressBookAll = await client.getConfig('all', false);
             console.log(serialize(addressBookAll, options.output));
             const item = addressBookAll.vip["user-parameters"]["opendoor-address-book"].find(doorItem => doorItem.name === options.door);
             console.log(`Opening door ${item.name} at address ${item["apt-address"]} and index ${item["output-index"]}`);
             if (item) {
                 console.log(serialize(await client.getServerInfo(), options.output));
+                const ctpp = await client.openDoorInit(addressBook.vip);
                 await client.openDoor(addressBookAll.vip, item, ctpp);
             }
             await client.shutdown();

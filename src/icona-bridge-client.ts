@@ -302,13 +302,11 @@ export class IconaBridgeClient {
 
     async openDoorInit(vip: VIPConfig) {
         const ctpp = await this.openChanel(Channel.CTPP, `${vip["apt-address"]}${vip["apt-subaddress"]}`);
-        await this.openChanel(Channel.CSPB);
+        // await this.openChanel(Channel.CSPB);
         const initMessage = getInitOpenDoorMessage(ctpp.id, vip);
         await this.writeBytePacket(initMessage);
-        /*
-                const resp1 = await this.readResponse<any>();
-                this.logger.info(`${JSON.stringify(resp1)}`);
-        */
+        const resp1 = await this.readResponse<any>();
+        this.logger.info(`CTPP:\n${JSON.stringify(resp1)}`);
         return ctpp;
     }
 
