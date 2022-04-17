@@ -27,7 +27,7 @@ import {
 import chalk from "chalk";
 import {bytesToHex, NULL, numberToHex, stringToBuffer} from "./utils";
 
-const ICONA_BRIDGE_PORT = 64100;
+export const ICONA_BRIDGE_PORT = 64100;
 
 function accessMessage(requestId: number, token: string) {
     const json = {

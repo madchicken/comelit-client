@@ -1,15 +1,26 @@
 #!/usr/bin/env node
 import yargs = require('yargs');
 import chalk from 'chalk';
-import {IconaBridgeClient} from '../icona-bridge-client';
+import {ICONA_BRIDGE_PORT, IconaBridgeClient} from '../icona-bridge-client';
 import YAML from "yamljs";
+import log4js from "log4js";
+
+log4js.configure({
+    appenders: { 'out': { type: 'stdout' } },
+    categories: { default: { appenders: ['out'], level: 'info' } }
+});
+
+const logger = log4js.getLogger('out');
+logger.level = 'info';
 
 interface ClientOptions {
     _: string[];
     $0: string;
     host: string;
+    port: number;
     token: string;
     output: string;
+    debug: boolean;
     command?: string;
     door?: string;
     addressbook?: string;
@@ -24,6 +35,13 @@ const options: ClientOptions = yargs
             type: 'string',
             demandOption: true,
         },
+        port: {
+            description: 'Comelit HUB port for ICONA Bridge (default ' + ICONA_BRIDGE_PORT + ')',
+            alias: 'p',
+            type: 'number',
+            demandOption: true,
+            default: ICONA_BRIDGE_PORT
+        },
         token: {
             description: 'Icona access token',
             alias: 't',
@@ -36,6 +54,13 @@ const options: ClientOptions = yargs
             type: 'string',
             demandOption: false,
             default: 'yaml'
+        },
+        debug: {
+            description: 'Output debug information',
+            alias: 'd',
+            type: 'boolean',
+            demandOption: false,
+            default: false
         },
     })
     .demandOption('host')
@@ -61,7 +86,12 @@ const options: ClientOptions = yargs
 
 async function run() {
     const command = options._[0];
-    console.log(chalk.green(`Executing command ${command}`));
+    if(options.debug) {
+        logger.level = 'debug';
+    } else {
+        logger.level = 'info';
+    }
+    logger.info(chalk.green(`Executing command ${command}`));
     try {
         switch (command) {
             case 'get-config':
@@ -80,89 +110,89 @@ async function run() {
                 await listDoors();
                 break;
             default:
-                console.error(chalk.red(`Unrecognized command ${command}`));
+                logger.error(chalk.red(`Unrecognized command ${command}`));
         }
 
-        console.log(chalk.green('Shutting down'));
-        console.log(chalk.green(`Command ${command} executed successfully`));
+        logger.info(chalk.green('Shutting down'));
+        logger.info(chalk.green(`Command ${command} executed successfully`));
     } catch (e) {
-        console.error(e);
+        logger.error(e);
     }
 }
 
 async function config() {
-    const client = new IconaBridgeClient(options.host);
+    const client = new IconaBridgeClient(options.host, options.port, logger);
     await client.connect();
     const code = await client.authenticate(options.token);
     if (code === 200) {
         const res = await client.getConfig(options.addressbook);
-        console.log(chalk.green(`Address books ${options.addressbook} response: `));
-        console.log(serialize(res, options.output));
+        logger.info(chalk.green(`Address books ${options.addressbook} response: `));
+        logger.info(serialize(res, options.output));
         await client.shutdown();
     }
 }
 
 async function serverInfo() {
-    const client = new IconaBridgeClient(options.host);
+    const client = new IconaBridgeClient(options.host, options.port, logger);
     await client.connect();
     const code = await client.authenticate(options.token);
     if (code === 200) {
         const res = await client.getServerInfo();
-        console.log(chalk.green('Server Info response: '));
-        console.log(serialize(res, options.output));
+        logger.info(chalk.green('Server Info response: '));
+        logger.info(serialize(res, options.output));
         await client.shutdown();
     }
 }
 
 async function pushInfo() {
-    const client = new IconaBridgeClient(options.host);
+    const client = new IconaBridgeClient(options.host, options.port, logger);
     await client.connect();
     const code = await client.authenticate(options.token);
     if (code === 200) {
         const conf = await client.getConfig(options.addressbook);
         const res = await client.getPushInfo(conf.vip, options.deviceToken);
-        console.log(chalk.green('Push Info response: '));
-        console.log(serialize(res, options.output));
+        logger.info(chalk.green('Push Info response: '));
+        logger.info(serialize(res, options.output));
         await client.shutdown();
     }
 }
 
 async function listDoors() {
-    const client = new IconaBridgeClient(options.host);
+    const client = new IconaBridgeClient(options.host, options.port, logger);
     await client.connect();
     const code = await client.authenticate(options.token);
     if (code === 200) {
         const addressBookAll = await client.getConfig('all');
-        console.log(chalk.green(`Available doors:`));
-        console.log(serialize(addressBookAll.vip["user-parameters"]["opendoor-address-book"], options.output));
+        logger.info(chalk.green(`Available doors:`));
+        logger.info(serialize(addressBookAll.vip["user-parameters"]["opendoor-address-book"], options.output));
         await client.shutdown();
     }
 
 }
 
 async function openDoor() {
-    const client = new IconaBridgeClient(options.host);
+    const client = new IconaBridgeClient(options.host, options.port, logger);
     await client.connect();
     try {
         const code = await client.authenticate(options.token);
         if (code === 200) {
             const addressBook = await client.getConfig('none', false);
-            console.log(serialize(addressBook, options.output));
+            logger.info(serialize(addressBook, options.output));
             const serverInfo = await client.getServerInfo(false);
-            console.log(serialize(serverInfo, options.output));
+            logger.info(serialize(serverInfo, options.output));
             const addressBookAll = await client.getConfig('all', false);
-            console.log(serialize(addressBookAll, options.output));
+            logger.info(serialize(addressBookAll, options.output));
             const item = addressBookAll.vip["user-parameters"]["opendoor-address-book"].find(doorItem => doorItem.name === options.door);
-            console.log(`Opening door ${item.name} at address ${item["apt-address"]} and index ${item["output-index"]}`);
+            logger.info(`Opening door ${item.name} at address ${item["apt-address"]} and index ${item["output-index"]}`);
             if (item) {
-                console.log(serialize(await client.getServerInfo(), options.output));
+                logger.info(serialize(await client.getServerInfo(), options.output));
                 const ctpp = await client.openDoorInit(addressBook.vip);
                 await client.openDoor(addressBookAll.vip, item, ctpp);
             }
             await client.shutdown();
         }
     } catch (e) {
-        console.error(chalk.red('Error while executing openDoor command'), e);
+        logger.error(chalk.red('Error while executing openDoor command'), e);
     } finally {
         await client.shutdown();
     }
@@ -179,6 +209,6 @@ function serialize(obj: any, output: string) {
 }
 
 run().then(() => {
-    console.log(chalk.green('Exiting'));
+    logger.info(chalk.green('Exiting'));
     process.exit(0);
 });
