@@ -212,7 +212,7 @@ export class IconaBridgeClient {
     decodeBinaryResponse<T extends BaseMessage>(requestId: number, subtype: number, type: number, body: Buffer): DecodedResponse<T> {
         switch (type) {
             case 0x18: // open door first response
-                this.logger.info('Open door: ' + bufferToASCIIString(body));
+                this.logger.debug('Open door: ' + bufferToASCIIString(body));
         }
         return {requestId, sequence: NO_SEQ, type: BinaryResponseType.BINARY};
     }
@@ -234,7 +234,7 @@ export class IconaBridgeClient {
 
         const response = await this.readResponse();
         if(response) {
-            this.logger.info(`Opened channel ${channel}, sequence is ${response.sequence} and requestId is ${numberToHex(this.id)}`);
+            this.logger.debug(`Opened channel ${channel}, sequence is ${response.sequence} and requestId is ${numberToHex(this.id)}`);
             if (response.type === BinaryResponseType.BINARY && response.sequence === 2) {
                 openChannelData.sequence = response.sequence;
                 return openChannelData
@@ -248,7 +248,7 @@ export class IconaBridgeClient {
         const p = PacketMessage.createBinaryPacketFromStrings(channelData.id, ++channelData.sequence, MessageType.END);
         await this.writeBytePacket(p);
         const response = await this.readResponse();
-        this.logger.info(`Closed channel ${channelData.channel}, sequence id is ${response.sequence} and requestId is ${numberToHex(channelData.id)}`);
+        this.logger.debug(`Closed channel ${channelData.channel}, sequence id is ${response.sequence} and requestId is ${numberToHex(channelData.id)}`);
         if (response.type === BinaryResponseType.BINARY && response.sequence === channelData.sequence + 1) {
             this.openChannels.delete(channelData.channel);
             return {...channelData, sequence: response.sequence}
@@ -328,9 +328,9 @@ export class IconaBridgeClient {
         const initMessage = getUnknownOpenDoorMessage(ctpp.id, vip);
         await this.writeBytePacket(initMessage);
         const resp1 = await this.readResponse<any>();
-        this.logger.info(`CTPP 1:\n${JSON.stringify(resp1)}`);
+        this.logger.debug(`CTPP 1:\n${JSON.stringify(resp1)}`);
         const resp2 = await this.readResponse<any>();
-        this.logger.info(`CTPP 2:\n${JSON.stringify(resp2)}`);
+        this.logger.debug(`CTPP 2:\n${JSON.stringify(resp2)}`);
         return ctpp;
     }
 
@@ -342,9 +342,9 @@ export class IconaBridgeClient {
         const message1 = getInitOpenDoorMessage(ctpp.id, vip, doorItem);
         await this.writeBytePacket(message1);
         const resp = await this.readResponse<ConfigurationResponse>();
-        this.logger.info(`${JSON.stringify(resp)}`);
+        this.logger.debug(`${JSON.stringify(resp)}`);
         const resp2 = await this.readResponse<ConfigurationResponse>();
-        this.logger.info(`${JSON.stringify(resp2)}`);
+        this.logger.debug(`${JSON.stringify(resp2)}`);
         const packetMessage1 = getOpenDoorMessage(ctpp.id, vip, doorItem);
         await this.writeBytePacket(packetMessage1);
         const confirmMessage1 = getOpenDoorMessage(ctpp.id, vip, doorItem, true);
