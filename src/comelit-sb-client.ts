@@ -124,6 +124,8 @@ export class ComelitSbClient {
   constructor(
     address: string,
     port: number = 80,
+    username?: string,
+    password?: string,
     onUpdate?: (objId: string, device: DeviceData) => void,
     log?: ConsoleLike
   ) {
@@ -137,6 +139,12 @@ export class ComelitSbClient {
       rejectUnauthorized: false,
     });
     axios.defaults.httpsAgent = agent;
+    if(username && password) {
+      axios.defaults.auth = {
+        username,
+        password
+      };
+    }
   }
 
   async login(): Promise<boolean> {
