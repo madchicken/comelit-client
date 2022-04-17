@@ -28,31 +28,31 @@ the default is 80.
 
 To get the description of configured areas, use the `area` along with `--desc` option:
 
-`vedo -h VEDO_IP -p PORT area --desc`
+    vedo -h VEDO_IP -p PORT area --desc
 
 To get the status of all areas, use the `area` along with `--status` option:
 
-`vedo -h VEDO_IP -p PORT area --status`
+    vedo -h VEDO_IP -p PORT area --status
 
 To get the active areas, use `--active` parameter:
 
-`vedo -h VEDO_IP -p PORT area --active`
+    vedo -h VEDO_IP -p PORT area --active
 
 To arm the system, use `--arm` parameter followed by the are number (32 means all the system):
 
-`vedo -h VEDO_IP -p PORT area --arm 32`
+    vedo -h VEDO_IP -p PORT area --arm 32
 
 To disarm the system, use `--disarm` parameter followed by the are number (32 means all the system):
 
-`vedo -h VEDO_IP -p PORT area --disarm 32`
+    vedo -h VEDO_IP -p PORT area --disarm 32
 
 To get the description of configured zones, use the `zone` along with `--desc` option:
 
-`vedo -h VEDO_IP -p PORT zone --desc`
+    vedo -h VEDO_IP -p PORT zone --desc
 
 To get the status of area use the `area` along with `--status` option:
 
-`vedo -h VEDO_IP -p PORT zone --status`
+    vedo -h VEDO_IP -p PORT zone --status
 
 ## Comelit Serial Bridge
 
@@ -62,7 +62,7 @@ This is a CLI to interact with the old serial bridge. This model uses polling to
 When using the tool, you always have to pass the host and the port of the serial bridge. Port is not mandatory,
 the default is 80.
 
-`comelit-sb -h SERIAL_BRIDGE_IP -p PORT`
+    comelit-sb -h SERIAL_BRIDGE_IP -p PORT
 
 You can query the system and ask to show the current configuration of the house by using one of the following
 commands in conjunction to the parameter `--list`:
@@ -75,7 +75,7 @@ commands in conjunction to the parameter `--list`:
 ### Rooms
 Rooms only support `list` action:
 
-`comelit-sb -h SERIAL_BRIDGE_IP -p PORT rooms --list`
+    comelit-sb -h SERIAL_BRIDGE_IP -p PORT rooms --list
 
 ```text
 GEN#PL#0 - root
@@ -94,7 +94,7 @@ GEN#PL#9 - Terrace
 
 As with `rooms` you can get the list of the house lights by using the `lights` command:
 
-`comelit-sb -h SERIAL_BRIDGE_IP -p PORT lights --list`
+    comelit-sb -h SERIAL_BRIDGE_IP -p PORT lights --list
 
 ```text
 0 - Entrance spotlights (status ON)
@@ -111,7 +111,7 @@ As with `rooms` you can get the list of the house lights by using the `lights` c
 
 Then, with the number printed in the list, you can interact with the specific light and turn it on and off:
 
-`comelit-sb -h SERIAL_BRIDGE_IP -p PORT lights --toggle 3`
+    comelit-sb -h SERIAL_BRIDGE_IP -p PORT lights --toggle 3
 
 The above command should toggle light number 3 of the list.
 
@@ -119,11 +119,11 @@ The above command should toggle light number 3 of the list.
 
 Shutters work in the same way of lights. Use:
 
-`comelit-sb -h SERIAL_BRIDGE_IP -p PORT shutters --list`
+    comelit-sb -h SERIAL_BRIDGE_IP -p PORT shutters --list
 
 to get a list of shutters in the house. Then use:
 
-`comelit-sb -h SERIAL_BRIDGE_IP -p PORT shutters --toggle 0`
+    comelit-sb -h SERIAL_BRIDGE_IP -p PORT shutters --toggle 0
 
 to open/close the shutter number 0 in the list
 
@@ -131,11 +131,11 @@ to open/close the shutter number 0 in the list
 
 Outlets work in the same way of lights. Use:
 
-`comelit-sb -h SERIAL_BRIDGE_IP -p PORT outlets --list`
+    comelit-sb -h SERIAL_BRIDGE_IP -p PORT outlets --list
 
 to get a list of outlets in the house. Then use:
 
-`comelit-sb -h SERIAL_BRIDGE_IP -p PORT outlets --toggle 0`
+    comelit-sb -h SERIAL_BRIDGE_IP -p PORT outlets --toggle 0
 
 to turn on/off the outlet number 0 in the list
 
@@ -143,21 +143,21 @@ to turn on/off the outlet number 0 in the list
 
 To get a list of thermostats in the house use the command 
 
-`comelit-sb -h SERIAL_BRIDGE_IP -p PORT clima --list`
+    comelit-sb -h SERIAL_BRIDGE_IP -p PORT clima --list
 
 Then, to turn on and off a specific thermostat, use
 
-`comelit-sb -h SERIAL_BRIDGE_IP -p PORT clima --toggle 0`
+    comelit-sb -h SERIAL_BRIDGE_IP -p PORT clima --toggle 0
 
 To change the temperature for a specific thermostat, use the `--temp` parameter:
 
-`comelit-sb -h SERIAL_BRIDGE_IP -p PORT clima --toggle 0 --temp 21.5`
+    comelit-sb -h SERIAL_BRIDGE_IP -p PORT clima --toggle 0 --temp 21.5
 
 The above command will set the temperature of thermostat 0 to 21.5 Celsius degrees.
 
 To change the season for a specific thermostat, use the `--season` parameter:
 
-`comelit-sb -h SERIAL_BRIDGE_IP -p PORT clima --toggle 0 --season [summer|winter]`
+    comelit-sb -h SERIAL_BRIDGE_IP -p PORT clima --toggle 0 --season [summer|winter]
 
 ## Comelit HUB
 
@@ -167,7 +167,7 @@ This is a CLI to interact with the new HUB. This model uses MQTT to update statu
 When using the tool, you can pass the host of the HUB. If you don't specify them, the CLI will try
 to find it on your network automatically.
 
-`comelit -h HUB_IP `
+    comelit -h HUB_IP
 
 You can query the system and ask to show the current configuration of the house by using one of the following
 commands in conjunction to the parameter `--list`:
@@ -181,7 +181,7 @@ commands in conjunction to the parameter `--list`:
 ### Rooms
 Rooms only support `list` action:
 
-`comelit rooms --list`
+    comelit rooms --list
 
 ```text
 GEN#PL#0 - root
@@ -200,7 +200,7 @@ GEN#PL#9 - Terrace
 
 As with `rooms` you can get the list of the house lights by using the `lights` command:
 
-`comelit lights --list`
+    comelit lights --list
 
 ```text
 DOM#LT#0 - Entrance spotlights (status ON)
@@ -217,7 +217,7 @@ DOM#LT#9 - Terrace (status OFF)
 
 Then, with the ID printed in the list, you can interact with the specific light and turn it on and off:
 
-`comelit lights --toggle DOM#LT#3`
+    comelit lights --toggle DOM#LT#3
 
 The above command should toggle light with ID `DOM#LT#3` of the list.
 
@@ -225,11 +225,11 @@ The above command should toggle light with ID `DOM#LT#3` of the list.
 
 Shutters work in the same way of lights. Use:
 
-`comelit shutters --list`
+    comelit shutters --list
 
 to get a list of shutters in the house. Then use:
 
-`comelit shutters --toggle DOM#BL#0`
+    comelit shutters --toggle DOM#BL#0
 
 to open/close the shutter with ID `DOM#BL#0` in the list
 
@@ -237,11 +237,11 @@ to open/close the shutter with ID `DOM#BL#0` in the list
 
 Outlets work in the same way of lights. Use:
 
-`comelit outlets --list`
+    comelit outlets --list
 
 to get a list of outlets in the house. Then use:
 
-`comelit outlets --toggle DOM#LC#0`
+    comelit outlets --toggle DOM#LC#0
 
 to turn on/off the outlet with ID `DOM#LC#0` in the list
 
@@ -249,19 +249,45 @@ to turn on/off the outlet with ID `DOM#LC#0` in the list
 
 To get a list of thermostats in the house use the command 
 
-`comelit clima --list`
+     comelit clima --list
 
 Then, to turn on and off a specific thermostat, use
 
-`comelit clima --toggle DOM#CL#0`
+    comelit clima --toggle DOM#CL#0
 
 To change the temperature for a specific thermostat, use the `--temp` parameter:
 
-`comelit clima --toggle DOM#CL#0 --temp 21.5`
+    comelit clima --toggle DOM#CL#0 --temp 21.5
 
 The above command will set the temperature of thermostat `DOM#CL#0` to 21.5 Celsius degrees.
 
 To change the season for a specific thermostat, use the `--season` parameter:
 
-`comelit clima --toggle DOM#CL#0 --season [summer|winter]`
+    comelit clima --toggle DOM#CL#0 --season [summer|winter]
 
+## ICONA Manager CLI - alpha support
+
+Please note that ICONA integration is in very alpha stage.
+
+To use ICONA integration you need to get the secret token by following [this guide](https://github.com/madchicken/comelit-client/wiki/Get-your-user-token-for-ICONA-communication).
+Once you have the token, you can request the configuration of the system using this call:
+
+    icona -t SECRET_TOKEN -h BRIDGE_HOST -p BRIDGE_PORT get-config all 
+
+if you have the Comelit HUB, BRIDGE_HOST is the hub ip while BRIDGE_PORT is 64100.
+To get the list of doors/gates you can manage use this command
+
+    icona -t SECRET_TOKEN -h BRIDGE_HOST -p BRIDGE_PORT list-doors 
+
+You should get an output like this:
+```
+    name: CANCELLO
+    apt-address: '00000100'
+    output-index: 2
+    secure-mode: false
+```
+Now you can use the following command to open the door:
+
+    icona -t SECRET_TOKEN -h BRIDGE_HOST -p BRIDGE_PORT open-door CANCELLO
+
+If it doesn't work, please repeat the command adding option `-d` and open an issue with the output you get.

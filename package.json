@@ -50,7 +50,8 @@
   "bin": {
     "comelit": "./dist/bin/comelit-cli.js",
     "comelit-sb": "./dist/bin/comelit-sb-cli.js",
-    "vedo": "./dist/bin/vedo-cli.js"
+    "vedo": "./dist/bin/vedo-cli.js",
+    "icona": "./dist/bin/icona-cli.js"
   },
   "devDependencies": {
     "@types/axios": "0.14.0",
