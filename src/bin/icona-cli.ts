@@ -186,8 +186,7 @@ async function openDoor() {
             logger.info(`Opening door ${item.name} at address ${item["apt-address"]} and index ${item["output-index"]}`);
             if (item) {
                 logger.info(serialize(await client.getServerInfo(), options.output));
-                const ctpp = await client.openDoorInit(addressBook.vip);
-                await client.openDoor(addressBookAll.vip, item, ctpp);
+                await client.openDoor(addressBookAll.vip, item);
             }
             await client.shutdown();
         }

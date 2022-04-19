@@ -324,30 +324,32 @@ export class IconaBridgeClient {
 
     async openDoorInit(vip: VIPConfig) {
         const ctpp = await this.openChanel(Channel.CTPP, `${vip["apt-address"]}${vip["apt-subaddress"]}`);
-        // await this.openChanel(Channel.CSPB);
         const initMessage = getUnknownOpenDoorMessage(ctpp.id, vip);
         await this.writeBytePacket(initMessage);
         const resp1 = await this.readResponse<any>();
         this.logger.debug(`CTPP 1:\n${JSON.stringify(resp1)}`);
         const resp2 = await this.readResponse<any>();
         this.logger.debug(`CTPP 2:\n${JSON.stringify(resp2)}`);
-        return ctpp;
     }
 
-    async openDoor(vip: VIPConfig, doorItem: DoorItem, ctpp: OpenChannelData) {
-        const packetMessage = getOpenDoorMessage(ctpp.id, vip, null);
+    async openDoor(vip: VIPConfig, doorItem: DoorItem) {
+        if(!this.openChannels.has(Channel.CTPP)) {
+            await this.openDoorInit(vip);
+        }
+        const channelCTPPData = this.openChannels.get(Channel.CTPP);
+        const packetMessage = getOpenDoorMessage(channelCTPPData.id, vip, null);
         await this.writeBytePacket(packetMessage);
-        const confirmMessage = getOpenDoorMessage(ctpp.id, vip, null, true);
+        const confirmMessage = getOpenDoorMessage(channelCTPPData.id, vip, null, true);
         await this.writeBytePacket(confirmMessage);
-        const message1 = getInitOpenDoorMessage(ctpp.id, vip, doorItem);
+        const message1 = getInitOpenDoorMessage(channelCTPPData.id, vip, doorItem);
         await this.writeBytePacket(message1);
         const resp = await this.readResponse<ConfigurationResponse>();
         this.logger.debug(`${JSON.stringify(resp)}`);
         const resp2 = await this.readResponse<ConfigurationResponse>();
         this.logger.debug(`${JSON.stringify(resp2)}`);
-        const packetMessage1 = getOpenDoorMessage(ctpp.id, vip, doorItem);
+        const packetMessage1 = getOpenDoorMessage(channelCTPPData.id, vip, doorItem);
         await this.writeBytePacket(packetMessage1);
-        const confirmMessage1 = getOpenDoorMessage(ctpp.id, vip, doorItem, true);
+        const confirmMessage1 = getOpenDoorMessage(channelCTPPData.id, vip, doorItem, true);
         await this.writeBytePacket(confirmMessage1);
     }
 }
