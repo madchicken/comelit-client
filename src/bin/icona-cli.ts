@@ -129,6 +129,8 @@ async function config() {
         logger.info(chalk.green(`Address books ${options.addressbook} response: `));
         logger.info(serialize(res, options.output));
         await client.shutdown();
+    } else {
+        logger.error(chalk.red(`Error while authenticating: server responded with code ${code}`));
     }
 }
 
@@ -141,6 +143,8 @@ async function serverInfo() {
         logger.info(chalk.green('Server Info response: '));
         logger.info(serialize(res, options.output));
         await client.shutdown();
+    } else {
+        logger.error(chalk.red(`Error while authenticating: server responded with code ${code}`));
     }
 }
 
@@ -154,6 +158,8 @@ async function pushInfo() {
         logger.info(chalk.green('Push Info response: '));
         logger.info(serialize(res, options.output));
         await client.shutdown();
+    } else {
+        logger.error(chalk.red(`Error while authenticating: server responded with code ${code}`));
     }
 }
 
@@ -166,8 +172,9 @@ async function listDoors() {
         logger.info(chalk.green(`Available doors:`));
         logger.info(serialize(addressBookAll.vip["user-parameters"]["opendoor-address-book"], options.output));
         await client.shutdown();
+    } else {
+        logger.error(chalk.red(`Error while authenticating: server responded with code ${code}`));
     }
-
 }
 
 async function openDoor() {
@@ -189,6 +196,8 @@ async function openDoor() {
                 await client.openDoor(addressBookAll.vip, item);
             }
             await client.shutdown();
+        } else {
+            logger.error(chalk.red(`Error while authenticating: server responded with code ${code}`));
         }
     } catch (e) {
         logger.error(chalk.red('Error while executing openDoor command'), e);
