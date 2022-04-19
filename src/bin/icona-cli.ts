@@ -129,6 +129,8 @@ async function config() {
         logger.info(chalk.green(`Address books ${options.addressbook} response: `));
         logger.info(serialize(res, options.output));
         await client.shutdown();
+    } else {
+        logger.error(chalk.red(`Error while authenticating: server responded with code ${code}`));
     }
 }
 
@@ -141,6 +143,8 @@ async function serverInfo() {
         logger.info(chalk.green('Server Info response: '));
         logger.info(serialize(res, options.output));
         await client.shutdown();
+    } else {
+        logger.error(chalk.red(`Error while authenticating: server responded with code ${code}`));
     }
 }
 
@@ -154,6 +158,8 @@ async function pushInfo() {
         logger.info(chalk.green('Push Info response: '));
         logger.info(serialize(res, options.output));
         await client.shutdown();
+    } else {
+        logger.error(chalk.red(`Error while authenticating: server responded with code ${code}`));
     }
 }
 
@@ -166,8 +172,9 @@ async function listDoors() {
         logger.info(chalk.green(`Available doors:`));
         logger.info(serialize(addressBookAll.vip["user-parameters"]["opendoor-address-book"], options.output));
         await client.shutdown();
+    } else {
+        logger.error(chalk.red(`Error while authenticating: server responded with code ${code}`));
     }
-
 }
 
 async function openDoor() {
@@ -183,13 +190,16 @@ async function openDoor() {
             const addressBookAll = await client.getConfig('all', false);
             logger.info(serialize(addressBookAll, options.output));
             const item = addressBookAll.vip["user-parameters"]["opendoor-address-book"].find(doorItem => doorItem.name === options.door);
-            logger.info(`Opening door ${item.name} at address ${item["apt-address"]} and index ${item["output-index"]}`);
             if (item) {
+                logger.info(`Opening door ${item.name} at address ${item["apt-address"]} and index ${item["output-index"]}`);
                 logger.info(serialize(await client.getServerInfo(), options.output));
-                const ctpp = await client.openDoorInit(addressBook.vip);
-                await client.openDoor(addressBookAll.vip, item, ctpp);
+                await client.openDoor(addressBookAll.vip, item);
+            } else {
+                logger.error(`No door with name ${options.door} found in config. Available door names are: ${addressBookAll.vip["user-parameters"]["opendoor-address-book"].map(d => d.name).join(', ')}`);
             }
             await client.shutdown();
+        } else {
+            logger.error(chalk.red(`Error while authenticating: server responded with code ${code}`));
         }
     } catch (e) {
         logger.error(chalk.red('Error while executing openDoor command'), e);
