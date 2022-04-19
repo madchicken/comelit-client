@@ -190,10 +190,12 @@ async function openDoor() {
             const addressBookAll = await client.getConfig('all', false);
             logger.info(serialize(addressBookAll, options.output));
             const item = addressBookAll.vip["user-parameters"]["opendoor-address-book"].find(doorItem => doorItem.name === options.door);
-            logger.info(`Opening door ${item.name} at address ${item["apt-address"]} and index ${item["output-index"]}`);
             if (item) {
+                logger.info(`Opening door ${item.name} at address ${item["apt-address"]} and index ${item["output-index"]}`);
                 logger.info(serialize(await client.getServerInfo(), options.output));
                 await client.openDoor(addressBookAll.vip, item);
+            } else {
+                logger.error(`No door with name ${options.door} found in config. Available door names are: ${addressBookAll.vip["user-parameters"]["opendoor-address-book"].map(d => d.name).join(', ')}`);
             }
             await client.shutdown();
         } else {
