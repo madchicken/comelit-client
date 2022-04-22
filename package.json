@@ -24,10 +24,10 @@
   ],
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "yarn clean && yarn build-ts && yarn lint",
-    "build-ts": "tsc",
-    "watch-ts": "tsc -w",
-    "lint": "tsc --noEmit && eslint \"src/*.{js,ts}\" --quiet --fix",
+    "build": "yarn clean && yarn build:ts && yarn lint",
+    "build:ts": "tsc",
+    "watch:ts": "tsc -w",
+    "lint": "eslint \"src/*.{js,ts}\" --quiet --fix",
     "prettier": "prettier --single-quote --trailing-comma es5 --write \"{src/,__{tests,mocks}__}/**/*.ts\"",
     "test": "jest",
     "clean": "rimraf dist/"

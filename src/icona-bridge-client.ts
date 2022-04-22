@@ -189,10 +189,10 @@ export class IconaBridgeClient {
                     return {requestId, sequence: seq, type: BinaryResponseType.BINARY};
                 }
                 case MessageType.END:
-                    this.logger.info("END response received with sequence number " + seq);
+                    this.logger.debug("END response received with sequence number " + seq);
                     return {requestId, sequence: seq, type: BinaryResponseType.BINARY};
                 default:
-                    this.logger.info("No handler implemented for message type " + getInt64Bytes(number).map(n => `0x${n}`).join(' '));
+                    this.logger.warn("No handler implemented for message type " + getInt64Bytes(number).map(n => `0x${n}`).join(' '));
                     return null;
             }
         } else { // data packet
