@@ -10,9 +10,9 @@ interface ClientOptions {
 
 const options: ClientOptions & any = yargs
   .scriptName('vedo')
-  .option('host', { alias: 'h', type: 'string', demandOption: true })
-  .option('code', { alias: 'c', type: 'string', demandOption: true })
-  .option('port', { alias: 'p', type: 'number', demandOption: false })
+  .option('host', { alias: 'h', type: 'string', demandOption: true, description: 'Host/IP of VEDO web interface' })
+  .option('code', { alias: 'c', type: 'string', demandOption: true, description: 'Arm/Disarm numeric code of your VEDO' })
+  .option('port', { alias: 'p', type: 'number', demandOption: false, description: 'TCP port of your VEDO web interface' })
   .command('area', 'Get info about active areas', {
     desc: {
       describe: 'Get info about areas status',
