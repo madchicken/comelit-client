@@ -74,6 +74,7 @@ const options: ClientOptions = yargs
     })
     .command('server-info', 'Get server information')
     .command('list-doors', 'List all available doors using ICONA bridge')
+    .command('list-actuators', 'List all available actuators using ICONA bridge')
     .command('open-door <door>', 'Open a door using ICONA bridge', () => {
         yargs.option('door', {
             describe: 'Name of the door to open',
@@ -175,6 +176,23 @@ async function listDoors() {
     } else {
         logger.error(chalk.red(`Error while authenticating: server responded with code ${code}`));
     }
+}
+
+function listActuators() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const client = new icona_bridge_client_1.IconaBridgeClient(options.host, options.port, logger);
+        yield client.connect();
+        const code = yield client.authenticate(options.token);
+        if (code === 200) {
+            const addressBookAll = yield client.getConfig('all');
+            logger.info(chalk_1.default.green(`Available actuators:`));
+            logger.info(serialize(addressBookAll.vip["user-parameters"]["actuator-address-book"], options.output));
+            yield client.shutdown();
+        }
+        else {
+            logger.error(chalk_1.default.red(`Error while authenticating: server responded with code ${code}`));
+        }
+    });
 }
 
 async function openDoor() {
