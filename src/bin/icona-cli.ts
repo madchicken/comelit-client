@@ -169,7 +169,7 @@ async function pushInfo() {
     }
 }
 
-async function listDoors(includeEntrance = true, includeActuators = true) {
+async function listDoors(includeEntrance = false, includeActuators = true) {
     const client = new IconaBridgeClient(options.host, options.port, logger);
     await client.connect();
     const code = await client.authenticate(options.token);
@@ -178,7 +178,7 @@ async function listDoors(includeEntrance = true, includeActuators = true) {
         logger.info(chalk.green(`Available doors:`));
         logger.info(serialize(addressBookAll.vip["user-parameters"]["opendoor-address-book"], options.output));
 
-        if(includeEntrance) {
+        if(includeEntrance) { // excluded by default, since entrance doors don't have module and index, so I don't know how to use them ATM
             logger.info(chalk.green(`Available entrance doors:`));
             logger.info(serialize(addressBookAll.vip["user-parameters"]["entrance-address-book"], options.output));
         }
