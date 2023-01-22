@@ -49,13 +49,14 @@ export interface AptConfig {
 export interface UserParameters {
     forced: boolean;
     'apt-address-book': any[];
-    'switchboard-address-book': any[];
+    'switchboard-address-book': SwitchboardItem[];
     'camera-address-book': any[];
-    'rtsp-camera-address-book': any[];
-    'entrance-address-book': any[];
-    'actuator-address-book': any[];
+    'rtsp-camera-address-book': RtspCameraItem[];
+    'entrance-address-book': EntranceDoorItem[];
+    'actuator-address-book': ActuatorDoorItem[];
     'opendoor-address-book': DoorItem[];
     'opendoor-actions': OpenDoorAction[];
+    'additional-actuator': AdditionalActuatorItem[];
 }
 
 export interface VIPConfig {
@@ -101,6 +102,43 @@ export interface ViperP2PConfig {
     mqtt: MQTTConfig;
     http: HTTPConfig;
     stun: STUNConfig;
+}
+
+export interface AdditionalActuatorItem {
+    id: number,
+    enabled: true,
+    "apt-address": string,
+    "module-index": number,
+    "output-index": number
+}
+
+export interface SwitchboardItem {
+    id: number,
+    name: string,
+    "apt-address": string,
+    "emergency-calls": boolean
+}
+
+export interface RtspCameraItem {
+    id: number,
+    name: string,
+    "rtsp-url": string,
+    "rtsp-user": string,
+    "rtsp-password": string
+}
+
+export interface EntranceDoorItem {
+    id: number,
+    name: string,
+    "apt-address": string
+}
+
+export interface ActuatorDoorItem {
+    id: number,
+    name: string,
+    "apt-address": string,
+    "module-index": number,
+    "output-index": number
 }
 
 export interface DoorItem {

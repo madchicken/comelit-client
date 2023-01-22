@@ -28,31 +28,31 @@ the default is 80.
 
 To get the description of configured areas, use the `area` along with `--desc` option:
 
-    vedo -h VEDO_IP -p PORT area --desc
+    vedo -h VEDO_IP -p PORT area --desc --code <ARM/DISARM CODE>
 
 To get the status of all areas, use the `area` along with `--status` option:
 
-    vedo -h VEDO_IP -p PORT area --status
+    vedo -h VEDO_IP -p PORT area --status --code <ARM/DISARM CODE>
 
 To get the active areas, use `--active` parameter:
 
-    vedo -h VEDO_IP -p PORT area --active
+    vedo -h VEDO_IP -p PORT area --active --code <ARM/DISARM CODE>
 
-To arm the system, use `--arm` parameter followed by the are number (32 means all the system):
+To arm the system, use `--arm` parameter followed by the area number (32 means all the system):
 
-    vedo -h VEDO_IP -p PORT area --arm 32
+    vedo -h VEDO_IP -p PORT area --arm 32 --code <ARM/DISARM CODE>
 
-To disarm the system, use `--disarm` parameter followed by the are number (32 means all the system):
+To disarm the system, use `--disarm` parameter followed by the area number (32 means all the system):
 
-    vedo -h VEDO_IP -p PORT area --disarm 32
+    vedo -h VEDO_IP -p PORT area --disarm 32 --code <ARM/DISARM CODE>
 
 To get the description of configured zones, use the `zone` along with `--desc` option:
 
-    vedo -h VEDO_IP -p PORT zone --desc
+    vedo -h VEDO_IP -p PORT zone --desc --code <ARM/DISARM CODE>
 
 To get the status of area use the `area` along with `--status` option:
 
-    vedo -h VEDO_IP -p PORT zone --status
+    vedo -h VEDO_IP -p PORT zone --status --code <ARM/DISARM CODE>
 
 ## Comelit Serial Bridge
 

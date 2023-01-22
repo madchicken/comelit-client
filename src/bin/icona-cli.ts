@@ -23,6 +23,7 @@ interface ClientOptions {
     debug: boolean;
     command?: string;
     door?: string;
+    type?: string;
     addressbook?: string;
     deviceToken?: string;
 }
@@ -79,6 +80,11 @@ const options: ClientOptions = yargs
             describe: 'Name of the door to open',
             type: 'string',
             demandOption: true
+        }).option('type', {
+            describe: 'Type of the command to open (possible values are: opendoor, actuator or entrance)',
+            type: 'string',
+            demandOption: false,
+            default: 'opendoor'
         });
     })
     .demandCommand()
@@ -163,7 +169,7 @@ async function pushInfo() {
     }
 }
 
-async function listDoors() {
+async function listDoors(includeEntrance = false, includeActuators = true) {
     const client = new IconaBridgeClient(options.host, options.port, logger);
     await client.connect();
     const code = await client.authenticate(options.token);
@@ -171,6 +177,17 @@ async function listDoors() {
         const addressBookAll = await client.getConfig('all');
         logger.info(chalk.green(`Available doors:`));
         logger.info(serialize(addressBookAll.vip["user-parameters"]["opendoor-address-book"], options.output));
+
+        if(includeEntrance) { // excluded by default, since entrance doors don't have module and index, so I don't know how to use them ATM
+            logger.info(chalk.green(`Available entrance doors:`));
+            logger.info(serialize(addressBookAll.vip["user-parameters"]["entrance-address-book"], options.output));
+        }
+
+        if(includeActuators) {
+            logger.info(chalk.green(`Available actuators:`));
+            logger.info(serialize(addressBookAll.vip["user-parameters"]["actuator-address-book"], options.output));
+        }
+
         await client.shutdown();
     } else {
         logger.error(chalk.red(`Error while authenticating: server responded with code ${code}`));
@@ -189,7 +206,8 @@ async function openDoor() {
             logger.info(serialize(serverInfo, options.output));
             const addressBookAll = await client.getConfig('all', false);
             logger.info(serialize(addressBookAll, options.output));
-            const item = addressBookAll.vip["user-parameters"]["opendoor-address-book"].find(doorItem => doorItem.name === options.door);
+            const type = options.type || 'opendoor';
+            const item = addressBookAll.vip["user-parameters"][type + "-address-book"].find(doorItem => doorItem.name === options.door);
             if (item) {
                 logger.info(`Opening door ${item.name} at address ${item["apt-address"]} and index ${item["output-index"]}`);
                 logger.info(serialize(await client.getServerInfo(), options.output));
