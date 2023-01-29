@@ -14,6 +14,7 @@ import {
     readJSON
 } from "./icona/packet";
 import {
+    ActuatorDoorItem,
     AddressbooksConfigMessage,
     AuthMessage,
     BaseMessage,
@@ -120,6 +121,33 @@ function getInitOpenDoorMessage(requestId: number, vip: VIPConfig, doorItem: Doo
         Buffer.from([0xff, 0xff, 0xff, 0xff]), // -1
         stringToBuffer(`${vip["apt-address"]}${vip["apt-subaddress"]}`, true),
         stringToBuffer(`${doorItem["apt-address"]}`, true),
+        NULL
+    ];
+
+    return PacketMessage.createBinaryPacketFromBuffers(requestId, ...buffers);
+}
+
+function getInitOpenActuatorMessage(requestId: number, vip: VIPConfig, actuatorDoorItem: ActuatorDoorItem) {
+    const buffers: Buffer[] = [
+        Buffer.from([0xc0, 0x18, 0x45, 0xbe]), // ??
+        Buffer.from([0x8f, 0x5c, 0x00, 0x4]), // ??
+        Buffer.from([0x00, 0x20, 0xff, 0x1]), // ??
+        Buffer.from([0xff, 0xff, 0xff, 0xff]), // -1
+        stringToBuffer(`${vip["apt-address"]}${vip["apt-subaddress"]}`, true),
+        stringToBuffer(`${actuatorDoorItem["apt-address"]}`, true),
+        NULL
+    ];
+
+    return PacketMessage.createBinaryPacketFromBuffers(requestId, ...buffers);
+}
+
+function getOpenActuatorMessage(requestId: number, vip: VIPConfig, actuatorDoorItem: ActuatorDoorItem, confirm = false) {
+    const buffers: Buffer[] = [
+        Buffer.from([confirm ? 0x20 : 0x0, 0x18, 0x45, 0xbe]), // ??
+        Buffer.from([0x8f, 0x5c, 0x00, 0x4]), // ??
+        Buffer.from([0xff, 0xff, 0xff, 0xff]), // -1
+        stringToBuffer(`${vip["apt-address"]}${vip["apt-subaddress"]}`, true),
+        stringToBuffer(`${actuatorDoorItem["apt-address"]}`, true),
         NULL
     ];
 
@@ -350,6 +378,23 @@ export class IconaBridgeClient {
         const packetMessage1 = getOpenDoorMessage(channelCTPPData.id, vip, doorItem);
         await this.writeBytePacket(packetMessage1);
         const confirmMessage1 = getOpenDoorMessage(channelCTPPData.id, vip, doorItem, true);
+        await this.writeBytePacket(confirmMessage1);
+    }
+
+    async openActuator(vip: VIPConfig, actuatorDoorItem: ActuatorDoorItem) {
+        if(!this.openChannels.has(Channel.CTPP)) {
+            await this.openDoorInit(vip);
+        }
+        const channelCTPPData = this.openChannels.get(Channel.CTPP);
+        const message1 = getInitOpenActuatorMessage(channelCTPPData.id, vip, actuatorDoorItem);
+        await this.writeBytePacket(message1);
+        const resp = await this.readResponse<ConfigurationResponse>();
+        this.logger.debug(`${JSON.stringify(resp)}`);
+        const resp2 = await this.readResponse<ConfigurationResponse>();
+        this.logger.debug(`${JSON.stringify(resp2)}`);
+        const packetMessage1 = getOpenActuatorMessage(channelCTPPData.id, vip, actuatorDoorItem, false);
+        await this.writeBytePacket(packetMessage1);
+        const confirmMessage1 = getOpenActuatorMessage(channelCTPPData.id, vip, actuatorDoorItem, true);
         await this.writeBytePacket(confirmMessage1);
     }
 }

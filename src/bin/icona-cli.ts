@@ -211,7 +211,11 @@ async function openDoor() {
             if (item) {
                 logger.info(`Opening door ${item.name} at address ${item["apt-address"]} and index ${item["output-index"]}`);
                 logger.info(serialize(await client.getServerInfo(), options.output));
-                await client.openDoor(addressBookAll.vip, item);
+                if (type === 'actuator') {
+                    await client.openActuator(addressBookAll.vip, item);
+                } else {
+                    await client.openDoor(addressBookAll.vip, item);
+                }
             } else {
                 logger.error(`No door with name ${options.door} found in config. Available door names are: ${addressBookAll.vip["user-parameters"]["opendoor-address-book"].map(d => d.name).join(', ')}`);
             }
