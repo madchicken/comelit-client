@@ -133,19 +133,16 @@ export interface EntranceDoorItem {
     "apt-address": string
 }
 
-export interface ActuatorDoorItem {
-    id: number,
-    name: string,
-    "apt-address": string,
-    "module-index": number,
-    "output-index": number
-}
-
 export interface DoorItem {
+    id: number,
     name: string;
     "apt-address": string;
     "output-index": number;
     "secure-mode": boolean;
+}
+
+export interface ActuatorDoorItem extends DoorItem {
+    "module-index": number,
 }
 
 export interface OpenDoorAction {
