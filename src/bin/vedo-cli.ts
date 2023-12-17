@@ -31,6 +31,10 @@ const options: ClientOptions & any = yargs
       describe: 'Arm a specific area',
       type: 'number',
     },
+    shortcut: {
+      describe: 'Trigger a specific shortcut',
+      type: 'string'
+    }
   })
   .command('zone', 'Get info about active zones', {
     desc: {
@@ -70,7 +74,7 @@ async function run() {
           await activeAreas(uid);
         }
         if (options.arm !== undefined) {
-          await armArea(uid, options.arm);
+          await armArea(uid, options.arm, options.shortcut);
         } else if (options.disarm !== undefined) {
           await disarmArea(uid, options.disarm);
         }
@@ -130,11 +134,11 @@ async function activeAreas(uid: string) {
   console.log(desc);
 }
 
-async function armArea(uid: string, num: number = 32) {
+async function armArea(uid: string, num: number = 32, shortcut?: string) {
   const areas = await client.findActiveAreas(uid);
   const isReady = areas.reduce((prev, area) => prev && area.ready, true);
   if (isReady) {
-    return await client.arm(uid, num);
+    return await client.arm(uid, num, true, shortcut);
   }
   return Promise.reject(new Error('Area not ready'));
 }
