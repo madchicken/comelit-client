@@ -23,6 +23,7 @@ export interface AlarmArea {
   armed: boolean;
   triggered: boolean;
   sabotaged: boolean;
+  shortcut?: number;
 }
 
 export interface AreaStatus extends LoginInfo {
@@ -276,6 +277,7 @@ export class VedoClient {
             ready: areaStat.ready[index] === 0,
             triggered: areaStat.alarm[index] !== 0,
             sabotaged: areaStat.sabotage[index] !== 0,
+            shortcut: areaStat.armed[index]
           };
         }
         return null;
