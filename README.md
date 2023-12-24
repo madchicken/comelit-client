@@ -42,6 +42,10 @@ To arm the system, use `--arm` parameter followed by the area number (32 means a
 
     vedo -h VEDO_IP -p PORT area --arm 32 --code <ARM/DISARM CODE>
 
+To arm a specific shortcut, use `--arm` parameter followed by the area number (32 means all the system):
+
+    vedo -h VEDO_IP -p PORT area --arm 32 --shortcut p1 --code <ARM/DISARM CODE>
+
 To disarm the system, use `--disarm` parameter followed by the area number (32 means all the system):
 
     vedo -h VEDO_IP -p PORT area --disarm 32 --code <ARM/DISARM CODE>
