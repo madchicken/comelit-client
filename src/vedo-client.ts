@@ -287,7 +287,6 @@ export class VedoClient {
 
   async arm(uid: string, area: number, force: boolean = true, shortcut?: string) {
     const key = shortcut ? shortcut : "tot"
-    console.log(key)
     const resp = await axios.get<any>(`${this.address}${this.config.action}`, {
       params: {
         force: force ? '1' : '0',
