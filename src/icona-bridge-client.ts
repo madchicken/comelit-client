@@ -102,7 +102,7 @@ function getOpenDoorMessage(requestId: number, vip: VIPConfig, doorItem: DoorIte
         Buffer.from([0x5c, 0x8b]),
         Buffer.from([0x2c, 0x74, 0x00, 0x00]),
         Buffer.from([0xff, 0xff, 0xff, 0xff]), // -1
-        stringToBuffer(`${vip["apt-address"]}${vip["apt-subaddress"]}`, true),
+        stringToBuffer(`${vip["apt-address"]}${doorItem["output-index"]}`, true),
         doorItem ? stringToBuffer(`${doorItem["apt-address"]}`) : stringToBuffer(`${vip["apt-address"]}`, true),
         NULL
     ]
@@ -119,7 +119,7 @@ function getInitOpenDoorMessage(requestId: number, vip: VIPConfig, doorItem: Doo
         NULL,
         Buffer.from([doorItem["output-index"], 0x0, 0x0, 0x0]), // 3600
         Buffer.from([0xff, 0xff, 0xff, 0xff]), // -1
-        stringToBuffer(`${vip["apt-address"]}${vip["apt-subaddress"]}`, true),
+        stringToBuffer(`${vip["apt-address"]}${doorItem["output-index"]}`, true),
         stringToBuffer(`${doorItem["apt-address"]}`, true),
         NULL
     ];
@@ -133,7 +133,7 @@ function getInitOpenActuatorMessage(requestId: number, vip: VIPConfig, actuatorD
         Buffer.from([0x8f, 0x5c, 0x00, 0x4]), // ??
         Buffer.from([0x00, 0x20, 0xff, 0x1]), // ??
         Buffer.from([0xff, 0xff, 0xff, 0xff]), // -1
-        stringToBuffer(`${vip["apt-address"]}${vip["apt-subaddress"]}`, true),
+        stringToBuffer(`${vip["apt-address"]}${actuatorDoorItem["output-index"]}`, true),
         stringToBuffer(`${actuatorDoorItem["apt-address"]}`, true),
         NULL
     ];
@@ -146,7 +146,7 @@ function getOpenActuatorMessage(requestId: number, vip: VIPConfig, actuatorDoorI
         Buffer.from([confirm ? 0x20 : 0x0, 0x18, 0x45, 0xbe]), // ??
         Buffer.from([0x8f, 0x5c, 0x00, 0x4]), // ??
         Buffer.from([0xff, 0xff, 0xff, 0xff]), // -1
-        stringToBuffer(`${vip["apt-address"]}${vip["apt-subaddress"]}`, true),
+        stringToBuffer(`${vip["apt-address"]}${actuatorDoorItem["output-index"]}`, true),
         stringToBuffer(`${actuatorDoorItem["apt-address"]}`, true),
         NULL
     ];
@@ -365,9 +365,9 @@ export class IconaBridgeClient {
             await this.openDoorInit(vip);
         }
         const channelCTPPData = this.openChannels.get(Channel.CTPP);
-        const packetMessage = getOpenDoorMessage(channelCTPPData.id, vip, null);
+        const packetMessage = getOpenDoorMessage(channelCTPPData.id, vip, doorItem);
         await this.writeBytePacket(packetMessage);
-        const confirmMessage = getOpenDoorMessage(channelCTPPData.id, vip, null, true);
+        const confirmMessage = getOpenDoorMessage(channelCTPPData.id, vip, doorItem, true);
         await this.writeBytePacket(confirmMessage);
         const message1 = getInitOpenDoorMessage(channelCTPPData.id, vip, doorItem);
         await this.writeBytePacket(message1);
