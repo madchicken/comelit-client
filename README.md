@@ -285,13 +285,30 @@ To get the list of doors/gates you can manage use this command
 
 You should get an output like this:
 ```
+[INFO] out - Available doors:
+[INFO] out - -
+    id: 0
     name: CANCELLO
     apt-address: '00000100'
     output-index: 2
     secure-mode: false
+
+[INFO] out - Available actuators:
+[INFO] out - -
+    id: 0
+    name: Actuator
+    apt-address: SBIO0255
+    module-index: 255
+    output-index: 1
+
 ```
 Now you can use the following command to open the door:
 
     icona -t SECRET_TOKEN -h BRIDGE_HOST -p BRIDGE_PORT open-door CANCELLO
 
 If it doesn't work, please repeat the command adding option `-d` and open an issue with the output you get.
+
+To open actuators you need to add the actuator name and `--type actuator` parameter:
+
+    icona -t SECRET_TOKEN -h BRIDGE_HOST -p BRIDGE_PORT open-door Actuator --type actuator
+
