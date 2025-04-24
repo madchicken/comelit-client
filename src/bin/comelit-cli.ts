@@ -12,7 +12,7 @@ import {
 } from '../comelit-client';
 import {
   CLOSE,
-  DeviceData,
+  DeviceData, LightDeviceData,
   OBJECT_SUBTYPE,
   OFF,
   ON,
@@ -549,7 +549,7 @@ async function listIrrigation() {
 }
 
 async function toggleLight(index: string) {
-  const lightDeviceData = await client.device(index);
+  const lightDeviceData = await client.device(index) as unknown as LightDeviceData;
   if (lightDeviceData) {
     if (lightDeviceData.status === STATUS_OFF) {
       return client.toggleDeviceStatus(index, ON);

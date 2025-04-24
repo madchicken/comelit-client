@@ -51,6 +51,8 @@ export interface OutletDeviceData extends DeviceData {
 }
 
 export interface IrrigationDeviceData extends DeviceData {}
+export interface VipDeviceData extends DeviceData {}
+export interface DoorDeviceData extends DeviceData {}
 
 export interface ThermostatDeviceData extends DeviceData {
   num_ingresso?: number;
@@ -156,6 +158,8 @@ export enum OBJECT_TYPE {
   OUTLET = 10,
   POWER_SUPPLIER = 11,
   ZONE = 1001,
+  VIP_ELEMENT = 2000,
+  DOOR = 2001,
 }
 
 export enum OBJECT_SUBTYPE {
@@ -204,16 +208,20 @@ export class HomeIndex {
     SupplierDeviceData
   >();
   public readonly unknownIndex: DeviceIndex = new Map<string, DeviceData>();
+  public readonly vipIndex: DeviceIndex = new Map<string, VipDeviceData>();
+  public readonly doorIndex: DeviceIndex = new Map<string, DoorDeviceData>();
 
   public readonly mainIndex: DeviceIndex = new Map<string, Readonly<DeviceData>>();
 
-  constructor(home: DeviceData, logger: ConsoleLike = console) {
-    home.elements.forEach((info: DeviceInfo) => {
-      this.visitElement(info);
-      logger.debug(
-        `Added home device with id: ${info.id}, type: ${info.data.type} (sub-type ${info.data.sub_type})`
-      );
-    });
+  constructor(home: DeviceData[], logger: ConsoleLike = console) {
+    for (const device of home) {
+      device.elements.forEach((info: DeviceInfo) => {
+        this.visitElement(info);
+        logger.debug(
+          `Added home device with id: ${info.id}, type: ${info.data.type} (sub-type ${info.data.sub_type})`
+        );
+      });
+    }
   }
 
   get(id: string): DeviceData {
@@ -256,6 +264,12 @@ export class HomeIndex {
       case OBJECT_TYPE.IRRIGATION:
         this.irrigationIndex.set(element.id, element.data as IrrigationDeviceData);
         break;
+      case OBJECT_TYPE.VIP_ELEMENT:
+        this.vipIndex.set(element.id, element.data as VipDeviceData);
+        break;
+      case OBJECT_TYPE.DOOR:
+        this.doorIndex.set(element.id, element.data as DoorDeviceData);
+        break;
       default:
         this.unknownIndex.set(element.id, element.data);
     }
@@ -290,61 +304,3 @@ export const ViperChannelType = {
   CTPP: 7,
   CSPB: 8,
 };
-
-/*
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const allConfigExample: ConfigurationResponse = {
-  message: 'get-configuration',
-  'message-type': 'response',
-  'message-id': 3,
-  'response-code': 200,
-  'response-string': 'OK',
-  'viper-server': <ViperServer>{
-    'local-address': '192.168.0.66',
-    'local-tcp-port': 64100,
-    'local-udp-port': 64100,
-    'remote-address': '',
-    'remote-tcp-port': 64100,
-    'remote-udp-port': 64100,
-  },
-  'viper-client': <ViperClient>{description: 'SU0EG'},
-  'viper-p2p': {
-    mqtt: <MQTTConfig>{
-      role: 'a',
-      base: 'HSrv/0025291701EC/vip/COMHUB01/sdp',
-      server: 'tls://hub-vip3.cloud.comelitgroup.com:443',
-      auth: {method: ['CCS_TOKEN', 'CCS_DEVICE']},
-    },
-    http: <HTTPConfig>{role: 'a', duuid: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'},
-    stun: <STUNConfig>{
-      server: ['turn-1-de.cloud.comelitgroup.com:3478', 'turn-1-de.cloud.comelitgroup.com:3478'],
-    },
-  },
-  vip: {
-    enabled: true,
-    'apt-address': 'COMHUB01',
-    'apt-subaddress': 2,
-    'logical-subaddress': 2,
-    'apt-config': {
-      description: '',
-      'call-divert-busy-en': false,
-      'call-divert-address': '',
-      'virtual-key-enabled': false,
-    },
-    'user-parameters': {
-      forced: true,
-      'apt-address-book': [],
-      'switchboard-address-book': [],
-      'camera-address-book': [],
-      'rtsp-camera-address-book': [],
-      'entrance-address-book': [],
-      'actuator-address-book': [],
-      'opendoor-address-book': [
-        <DoorItem>{name: 'CANCELLO', 'apt-address': '00000100', 'output-index': 2, 'secure-mode': false},
-      ],
-      'opendoor-actions': [<OpenDoorAction>{action: 'peer', 'apt-address': '', 'output-index': 1}],
-    },
-  },
-  'building-config': <BuildingConfig>{description: 'your building'},
-};
-*/

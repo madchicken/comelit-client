@@ -486,7 +486,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     return ComelitClient.evalResponse(response);
   }
 
-  async device(objId: string = ROOT_ID, detailLevel?: number): Promise<DeviceData> {
+  async device(objId: string = ROOT_ID, detailLevel?: number): Promise<DeviceData[]> {
     const packet: MqttMessage = {
       req_type: REQUEST_TYPE.STATUS,
       seq_id: this.props.index++,
@@ -497,7 +497,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     };
     const response = await this.publish(packet);
     ComelitClient.evalResponse(response);
-    return response.out_data[0] as DeviceData;
+    return response.out_data as DeviceData[];
   }
 
   async zones(objId: string): Promise<DeviceData> {
@@ -516,7 +516,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
   }
 
   async fetchHomeIndex(): Promise<HomeIndex> {
-    const root = await this.device(ROOT_ID);
+    const root = await this.device(ROOT_ID, 2);
     this.logger.debug('Home index successfully read: \n', JSON.stringify(root, null, 2));
     return this.mapHome(root);
   }
@@ -572,7 +572,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     return ComelitClient.evalResponse(response);
   }
 
-  mapHome(home: DeviceData): HomeIndex {
+  mapHome(home: DeviceData[]): HomeIndex {
     this.homeIndex = new HomeIndex(home, this.logger);
     return this.homeIndex;
   }
