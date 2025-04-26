@@ -428,7 +428,7 @@ async function listRooms() {
 function printObj(obj: DeviceData) {
   console.log(
     chalk.green(
-      `${obj.objectId} - ${obj.descrizione} (status ${obj.status === STATUS_ON ? 'ON' : 'OFF'})`
+      `${obj.id} - ${obj.descrizione} (status ${obj.status === STATUS_ON ? 'ON' : 'OFF'})`
     )
   );
 }
@@ -450,7 +450,7 @@ async function listOutlets() {
     [...homeIndex.outletsIndex.values()].forEach(outlet => {
       console.log(
         chalk.green(
-          `${outlet.objectId} - ${outlet.descrizione} (status ${
+          `${outlet.id} - ${outlet.descrizione} (status ${
             outlet.status === STATUS_ON ? 'ON' : 'OFF'
           })`
         )
@@ -467,7 +467,7 @@ async function listOthers() {
     [...homeIndex.othersIndex.values()].forEach(other => {
       console.log(
         chalk.green(
-          `${other.objectId} - ${other.descrizione} (status ${
+          `${other.id} - ${other.descrizione} (status ${
             other.status === STATUS_ON ? 'ON' : 'OFF'
           })`
         )
@@ -485,7 +485,7 @@ async function listBlinds() {
     [...homeIndex.blindsIndex.values()].forEach(blind => {
       console.log(
         chalk.green(
-          `${blind.objectId} - ${blind.descrizione} (status ${
+          `${blind.id} - ${blind.descrizione} (status ${
             blind.status === STATUS_ON ? 'DOWN' : 'UP'
           })`
         )
@@ -505,7 +505,7 @@ async function listClima() {
       const isManual = auto_man === ClimaMode.OFF_MANUAL || auto_man === ClimaMode.MANUAL;
       console.log(
         chalk.green(
-          `${clima.objectId} - ${clima.descrizione}:\nThermostat status ${isOff ? 'OFF' : 'ON'}, ${
+          `${clima.id} - ${clima.descrizione}:\nThermostat status ${isOff ? 'OFF' : 'ON'}, ${
             isManual ? 'manual mode' : 'auto mode'
           }, ${clima.est_inv === ThermoSeason.WINTER ? 'winter' : 'summer'}, Temperature ${parseInt(
             clima.temperatura
@@ -538,7 +538,7 @@ async function listIrrigation() {
     return [...homeIndex.irrigationIndex.values()].forEach(irr => {
       console.log(
         chalk.green(
-          `${irr.objectId} - ${irr.descrizione} (status ${irr.status === STATUS_ON ? 'ON' : 'OFF'})`
+          `${irr.id} - ${irr.descrizione} (status ${irr.status === STATUS_ON ? 'ON' : 'OFF'})`
         )
       );
       ``;

@@ -215,10 +215,10 @@ export class HomeIndex {
 
   constructor(home: DeviceData[], logger: ConsoleLike = console) {
     for (const device of home) {
-      device.elements.forEach((info: DeviceInfo) => {
+      device.elements.forEach((info: DeviceData) => {
         this.visitElement(info);
         logger.debug(
-          `Added home device with id: ${info.id}, type: ${info.data.type} (sub-type ${info.data.sub_type})`
+          `Added home device with id: ${info.id}, type: ${info.type} (sub-type ${info.sub_type})`
         );
       });
     }
@@ -238,49 +238,49 @@ export class HomeIndex {
     return null;
   }
 
-  private visitElement(element: DeviceInfo) {
-    switch (element.data.type) {
+  private visitElement(element: DeviceData) {
+    switch (element.type) {
       case OBJECT_TYPE.OTHER:
-        this.othersIndex.set(element.id, element.data as OtherDeviceData);
+        this.othersIndex.set(element.id, element as OtherDeviceData);
         break;
       case OBJECT_TYPE.LIGHT:
-        this.lightsIndex.set(element.id, element.data as LightDeviceData);
+        this.lightsIndex.set(element.id, element as LightDeviceData);
         break;
       case OBJECT_TYPE.ZONE:
-        this.roomsIndex.set(element.id, element.data);
+        this.roomsIndex.set(element.id, element);
         break;
       case OBJECT_TYPE.THERMOSTAT:
-        this.thermostatsIndex.set(element.id, element.data as ThermostatDeviceData);
+        this.thermostatsIndex.set(element.id, element as ThermostatDeviceData);
         break;
       case OBJECT_TYPE.BLIND:
-        this.blindsIndex.set(element.id, element.data as BlindDeviceData);
+        this.blindsIndex.set(element.id, element as BlindDeviceData);
         break;
       case OBJECT_TYPE.OUTLET:
-        this.outletsIndex.set(element.id, element.data as OutletDeviceData);
+        this.outletsIndex.set(element.id, element as OutletDeviceData);
         break;
       case OBJECT_TYPE.POWER_SUPPLIER:
-        this.supplierIndex.set(element.id, element.data as SupplierDeviceData);
+        this.supplierIndex.set(element.id, element as SupplierDeviceData);
         break;
       case OBJECT_TYPE.IRRIGATION:
-        this.irrigationIndex.set(element.id, element.data as IrrigationDeviceData);
+        this.irrigationIndex.set(element.id, element as IrrigationDeviceData);
         break;
       case OBJECT_TYPE.VIP_ELEMENT:
-        this.vipIndex.set(element.id, element.data as VipDeviceData);
+        this.vipIndex.set(element.id, element as VipDeviceData);
         break;
       case OBJECT_TYPE.DOOR:
-        this.doorIndex.set(element.id, element.data as DoorDeviceData);
+        this.doorIndex.set(element.id, element as DoorDeviceData);
         break;
       default:
-        this.unknownIndex.set(element.id, element.data);
+        this.unknownIndex.set(element.id, element);
     }
 
     if (this.mainIndex.has(element.id)) {
       console.warn(`Overwriting element with key ${element.id} in index!`);
     }
-    this.mainIndex.set(element.id, element.data);
+    this.mainIndex.set(element.id, element);
 
-    if (element.data.elements) {
-      element.data.elements.forEach(value => this.visitElement(value));
+    if (element.elements) {
+      element.elements.forEach(value => this.visitElement(value));
     }
   }
 }
