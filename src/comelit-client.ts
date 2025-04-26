@@ -292,7 +292,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
           sendInfo(rinfo);
         } else {
           const device: ComelitDevice = {
-            macAddress: hexToString(msg.subarray(14, 20)),
+            macAddress: hexToString(msg.subarray(14, 20)).toUpperCase(),
             hwID: msg.subarray(20, 24).toString(),
             appID: msg.subarray(24, 28).toString(),
             appVersion: msg.subarray(32, 112).toString(),
@@ -447,6 +447,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     try {
       const response = await this.publish(packet);
       this.props.sessiontoken = response.sessiontoken;
+      this.logger.info(`Got session token: ${response.sessiontoken}`);
       return true;
     } catch (e) {
       console.error(e);
