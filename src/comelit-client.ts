@@ -281,12 +281,18 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
         resolve(devices);
       });
 
+      function hexToString(buffer: Buffer) {
+        return Array.from(buffer)
+          .map(byte => byte.toString(16).padStart(2, '0')) // ogni byte in hex, 2 cifre
+          .join('');
+      }
+
       server.on('message', (msg, rinfo: RemoteInfo) => {
         if (msg.toString().startsWith('here')) {
           sendInfo(rinfo);
         } else {
           const device: ComelitDevice = {
-            macAddress: bytesToHex(msg.subarray(14, 20)),
+            macAddress: hexToString(msg.subarray(14, 20)),
             hwID: msg.subarray(20, 24).toString(),
             appID: msg.subarray(24, 28).toString(),
             appVersion: msg.subarray(32, 112).toString(),
