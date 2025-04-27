@@ -233,6 +233,19 @@ const options: ClientOptions & any = yargs
       type: 'number',
     },
   })
+  .command('doors', 'Get the list of all doors in the house', {
+    host: {
+      alias: 'h',
+      description: 'broker host or IP',
+      type: 'string',
+      demandOption: false,
+    },
+    toggle: {
+      alias: 't',
+      describe: 'Open the door/gate',
+      type: 'boolean',
+    },
+  })
   .command('irrigation', 'Get info about house irrigation system', {
     host: {
       alias: 'h',
@@ -368,6 +381,12 @@ async function run() {
             }
           } else {
             await listClima();
+          }
+          break;
+        case 'doors':
+          if (toggle !== undefined) {
+          } else {
+            await listDoors();
           }
           break;
         case 'irrigation':
@@ -529,6 +548,22 @@ async function listClima() {
     });
   } else {
     console.log(chalk.red('No device of type clima found.'));
+  }
+}
+
+async function listDoors() {
+  const homeIndex = await client.fetchHomeIndex();
+  if (homeIndex.doorIndex.size) {
+    return [...homeIndex.doorIndex.values()].forEach(door => {
+      console.log(
+        chalk.green(
+          `${door.id} - ${door.descrizione} (status ${door.status === STATUS_ON ? 'ON' : 'OFF'})`
+        )
+      );
+      ``;
+    });
+  } else {
+    console.log(chalk.red('No device of type irrigation found.'));
   }
 }
 
