@@ -26,7 +26,7 @@ import {
     VIPConfig
 } from "./icona/types";
 import chalk from "chalk";
-import {bytesToHex, NULL, numberToHex, stringToBuffer} from "./utils";
+import { hexToString, NULL, numberToHex, stringToBuffer } from './utils';
 
 export const ICONA_BRIDGE_PORT = 64100;
 
@@ -186,7 +186,7 @@ export class IconaBridgeClient {
     }
 
     private async writeBytePacket(packet: PacketMessage) {
-        this.logger.debug(`Writing bytes to socket: \n${bytesToHex(packet.bytes)}`);
+        this.logger.debug(`Writing bytes to socket: \n${hexToString(packet.bytes)}`);
         await this.socket.writeAll(packet.bytes);
     }
 
@@ -197,7 +197,7 @@ export class IconaBridgeClient {
             const size = header.readUIntLE(2, 2);
             let requestId = header.readUIntLE(4, 4);
             const body = (await this.socket.read(size)) as Buffer;
-            this.logger.debug(`Read bytes from socket (size: ${size}):\n${bytesToHex(body)}`)
+            this.logger.debug(`Read bytes from socket (size: ${size}):\n${hexToString(body)}`)
             return this.decodeResponse<T>(requestId, body);
         } catch (e) {
             this.logger.warn('No bytes to read, skipping');

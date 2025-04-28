@@ -1,6 +1,6 @@
 import MQTT, { AsyncMqttClient } from 'async-mqtt';
 import { DeferredMessage, PromiseBasedQueue } from './promise-queue';
-import { bytesToHex, generateUUID, sleep } from './utils';
+import { generateUUID, hexToString, sleep } from './utils';
 import dgram, { RemoteInfo } from 'dgram';
 import { AddressInfo } from 'net';
 import { ConsoleLike, DeviceData, HomeIndex } from './types';
@@ -281,12 +281,6 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
         resolve(devices);
       });
 
-      function hexToString(buffer: Buffer) {
-        return Array.from(buffer)
-          .map(byte => byte.toString(16).padStart(2, '0')) // ogni byte in hex, 2 cifre
-          .join('');
-      }
-
       server.on('message', (msg, rinfo: RemoteInfo) => {
         if (msg.toString().startsWith('here')) {
           sendInfo(rinfo);
@@ -348,7 +342,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
           : config.host
       );
       server.on('message', (msg) => {
-        const macAddress = bytesToHex(msg.subarray(14, 20));
+        const macAddress = hexToString(msg.subarray(14, 20)).toUpperCase();
         server.close();
         resolve(macAddress.toUpperCase());
       });
@@ -367,6 +361,9 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     if (config.host) {
       broker = config.host.indexOf('://') !== -1 ? config.host : `mqtt://${config.host}`;
       macAddress = await this.getMACAddress(config);
+      this.logger.info(
+        `Using configured Comelit HUB at ${broker} (MAC ${macAddress})`
+      );
     } else {
       this.logger.info('Searching for Comelit HUB on LAN...');
       const devices = await this.scan();
