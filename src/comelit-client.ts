@@ -335,7 +335,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     });
   }
 
-  async getMACAddress(config: HUBClientConfig) {
+  async getMACAddress(config: HUBClientConfig): Promise<string> {
     return new Promise((resolve, reject) => {
       const server = dgram.createSocket('udp4');
       const message = Buffer.alloc(12);
@@ -344,7 +344,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
         message,
         SCAN_PORT,
         config.host.indexOf('://') !== -1
-          ? config.host.substr(config.host.indexOf('://') + 3)
+          ? config.host.substring(config.host.indexOf('://') + 3)
           : config.host
       );
       server.on('message', (msg) => {
@@ -361,8 +361,9 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
   }
 
   async init(config: HUBClientConfig): Promise<AsyncMqttClient> {
-    let broker;
-    let macAddress;
+    this.logger.info('Comelit Client version 3.0.0');
+    let broker: string;
+    let macAddress: string;
     if (config.host) {
       broker = config.host.indexOf('://') !== -1 ? config.host : `mqtt://${config.host}`;
       macAddress = await this.getMACAddress(config);
