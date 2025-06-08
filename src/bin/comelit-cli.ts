@@ -12,7 +12,8 @@ import {
 } from '../comelit-client';
 import {
   CLOSE,
-  DeviceData, LightDeviceData,
+  DeviceData,
+  LightDeviceData,
   OBJECT_SUBTYPE,
   OFF,
   ON,
@@ -243,7 +244,7 @@ const options: ClientOptions & any = yargs
     toggle: {
       alias: 't',
       describe: 'Open the door/gate',
-      type: 'boolean',
+      type: 'string',
     },
   })
   .command('irrigation', 'Get info about house irrigation system', {
@@ -385,6 +386,13 @@ async function run() {
           break;
         case 'doors':
           if (toggle !== undefined) {
+            const homeIndex = await client.fetchHomeIndex();
+            let door = homeIndex.doorIndex.get(toggle);
+            if (door) {
+              await client.toggleDeviceStatus(door.id, ON);
+            } else {
+              console.error(`Door ${toggle} not found`);
+            }
           } else {
             await listDoors();
           }
