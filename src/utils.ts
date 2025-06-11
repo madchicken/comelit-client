@@ -1,6 +1,5 @@
 import crypto, { BinaryLike } from 'crypto';
 import axios from 'axios';
-import {chunk, padEnd} from "lodash";
 
 export const NULL = Buffer.from([0x00]);
 
@@ -48,13 +47,10 @@ export async function sleep(time) {
   return new Promise((resolve) => setTimeout(() => resolve(null), time));
 }
 
-export function bytesToHex(byteArray: Buffer): string {
-  const chunks = chunk(byteArray, 16);
-  return chunks.map(c => {
-    const hex = c.reduce((output, elem) => output + ('0' + elem.toString(16)).slice(-2) + " ", '');
-    const ascii = c.map(c => c <= 128 && c > 31 ? String.fromCharCode(c) : '·').join('');
-    return `${padEnd(hex, 48)}\t${ascii}`;
-  }).join('\n');
+export function hexToString(buffer: Buffer) {
+  return Array.from(buffer)
+    .map(byte => byte.toString(16).padStart(2, '0')) // ogni byte in hex, 2 cifre
+    .join('');
 }
 
 export function numberToHex(n: number): string {

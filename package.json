@@ -1,6 +1,6 @@
 {
   "name": "comelit-client",
-  "version": "2.5.3",
+  "version": "3.0.0",
   "author": "Pierpaolo Follia",
   "repository": {
     "type": "git",
@@ -35,11 +35,11 @@
   "dependencies": {
     "async-mqtt": "2.6.1",
     "atob": "2.1.2",
-    "axios": "0.21.2",
+    "axios": "^1.9.0",
     "chalk": "3.0.0",
     "lodash": "4.17.21",
     "log4js": "6.4.5",
-    "mqtt": "4.2.8",
+    "mqtt": "^5.11.1",
     "mqtt-packet": "6.6.0",
     "promise-socket": "^7.0.0",
     "querystring": "0.2.0",

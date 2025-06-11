@@ -264,7 +264,7 @@ export class ComelitSbClient {
       });
     }
 
-    return new HomeIndex({
+    return new HomeIndex([{
       id: ROOT_ID,
       objectId: ROOT_ID,
       status: STATUS_OFF,
@@ -273,7 +273,7 @@ export class ComelitSbClient {
       sub_type: OBJECT_SUBTYPE.GENERIC_ZONE,
       descrizione: 'root',
       elements: [...rooms.values()].map(dd => ({ id: dd.id, data: dd })),
-    });
+    }]);
   }
 
   private async fetchDeviceDesc(type: string): Promise<DeviceInfo> {

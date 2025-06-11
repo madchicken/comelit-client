@@ -13,6 +13,7 @@ import {
 import {
   CLOSE,
   DeviceData,
+  LightDeviceData,
   OBJECT_SUBTYPE,
   OFF,
   ON,
@@ -233,6 +234,19 @@ const options: ClientOptions & any = yargs
       type: 'number',
     },
   })
+  .command('doors', 'Get the list of all doors in the house', {
+    host: {
+      alias: 'h',
+      description: 'broker host or IP',
+      type: 'string',
+      demandOption: false,
+    },
+    toggle: {
+      alias: 't',
+      describe: 'Open the door/gate',
+      type: 'string',
+    },
+  })
   .command('irrigation', 'Get info about house irrigation system', {
     host: {
       alias: 'h',
@@ -370,6 +384,19 @@ async function run() {
             await listClima();
           }
           break;
+        case 'doors':
+          if (toggle !== undefined) {
+            const homeIndex = await client.fetchHomeIndex();
+            let door = homeIndex.doorIndex.get(toggle);
+            if (door) {
+              await client.toggleDeviceStatus(door.id, ON);
+            } else {
+              console.error(`Door ${toggle} not found`);
+            }
+          } else {
+            await listDoors();
+          }
+          break;
         case 'irrigation':
           if (toggle !== undefined) {
             await toggleIrrigation(toggle);
@@ -428,7 +455,7 @@ async function listRooms() {
 function printObj(obj: DeviceData) {
   console.log(
     chalk.green(
-      `${obj.objectId} - ${obj.descrizione} (status ${obj.status === STATUS_ON ? 'ON' : 'OFF'})`
+      `${obj.id} - ${obj.descrizione} (status ${obj.status === STATUS_ON ? 'ON' : 'OFF'})`
     )
   );
 }
@@ -450,7 +477,7 @@ async function listOutlets() {
     [...homeIndex.outletsIndex.values()].forEach(outlet => {
       console.log(
         chalk.green(
-          `${outlet.objectId} - ${outlet.descrizione} (status ${
+          `${outlet.id} - ${outlet.descrizione} (status ${
             outlet.status === STATUS_ON ? 'ON' : 'OFF'
           })`
         )
@@ -467,7 +494,7 @@ async function listOthers() {
     [...homeIndex.othersIndex.values()].forEach(other => {
       console.log(
         chalk.green(
-          `${other.objectId} - ${other.descrizione} (status ${
+          `${other.id} - ${other.descrizione} (status ${
             other.status === STATUS_ON ? 'ON' : 'OFF'
           })`
         )
@@ -485,7 +512,7 @@ async function listBlinds() {
     [...homeIndex.blindsIndex.values()].forEach(blind => {
       console.log(
         chalk.green(
-          `${blind.objectId} - ${blind.descrizione} (status ${
+          `${blind.id} - ${blind.descrizione} (status ${
             blind.status === STATUS_ON ? 'DOWN' : 'UP'
           })`
         )
@@ -505,7 +532,7 @@ async function listClima() {
       const isManual = auto_man === ClimaMode.OFF_MANUAL || auto_man === ClimaMode.MANUAL;
       console.log(
         chalk.green(
-          `${clima.objectId} - ${clima.descrizione}:\nThermostat status ${isOff ? 'OFF' : 'ON'}, ${
+          `${clima.id} - ${clima.descrizione}:\nThermostat status ${isOff ? 'OFF' : 'ON'}, ${
             isManual ? 'manual mode' : 'auto mode'
           }, ${clima.est_inv === ThermoSeason.WINTER ? 'winter' : 'summer'}, Temperature ${parseInt(
             clima.temperatura
@@ -532,13 +559,29 @@ async function listClima() {
   }
 }
 
+async function listDoors() {
+  const homeIndex = await client.fetchHomeIndex();
+  if (homeIndex.doorIndex.size) {
+    return [...homeIndex.doorIndex.values()].forEach(door => {
+      console.log(
+        chalk.green(
+          `${door.id} - ${door.descrizione} (status ${door.status === STATUS_ON ? 'ON' : 'OFF'})`
+        )
+      );
+      ``;
+    });
+  } else {
+    console.log(chalk.red('No device of type irrigation found.'));
+  }
+}
+
 async function listIrrigation() {
   const homeIndex = await client.fetchHomeIndex();
   if (homeIndex.irrigationIndex.size) {
     return [...homeIndex.irrigationIndex.values()].forEach(irr => {
       console.log(
         chalk.green(
-          `${irr.objectId} - ${irr.descrizione} (status ${irr.status === STATUS_ON ? 'ON' : 'OFF'})`
+          `${irr.id} - ${irr.descrizione} (status ${irr.status === STATUS_ON ? 'ON' : 'OFF'})`
         )
       );
       ``;
@@ -549,7 +592,7 @@ async function listIrrigation() {
 }
 
 async function toggleLight(index: string) {
-  const lightDeviceData = await client.device(index);
+  const lightDeviceData = await client.device(index) as unknown as LightDeviceData;
   if (lightDeviceData) {
     if (lightDeviceData.status === STATUS_OFF) {
       return client.toggleDeviceStatus(index, ON);

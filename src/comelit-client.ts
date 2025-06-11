@@ -1,6 +1,6 @@
 import MQTT, { AsyncMqttClient } from 'async-mqtt';
 import { DeferredMessage, PromiseBasedQueue } from './promise-queue';
-import { bytesToHex, generateUUID, sleep } from './utils';
+import { generateUUID, hexToString, sleep } from './utils';
 import dgram, { RemoteInfo } from 'dgram';
 import { AddressInfo } from 'net';
 import { ConsoleLike, DeviceData, HomeIndex } from './types';
@@ -286,7 +286,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
           sendInfo(rinfo);
         } else {
           const device: ComelitDevice = {
-            macAddress: bytesToHex(msg.subarray(14, 20)),
+            macAddress: hexToString(msg.subarray(14, 20)).toUpperCase(),
             hwID: msg.subarray(20, 24).toString(),
             appID: msg.subarray(24, 28).toString(),
             appVersion: msg.subarray(32, 112).toString(),
@@ -329,7 +329,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     });
   }
 
-  async getMACAddress(config: HUBClientConfig) {
+  async getMACAddress(config: HUBClientConfig): Promise<string> {
     return new Promise((resolve, reject) => {
       const server = dgram.createSocket('udp4');
       const message = Buffer.alloc(12);
@@ -338,11 +338,11 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
         message,
         SCAN_PORT,
         config.host.indexOf('://') !== -1
-          ? config.host.substr(config.host.indexOf('://') + 3)
+          ? config.host.substring(config.host.indexOf('://') + 3)
           : config.host
       );
       server.on('message', (msg) => {
-        const macAddress = bytesToHex(msg.subarray(14, 20));
+        const macAddress = hexToString(msg.subarray(14, 20)).toUpperCase();
         server.close();
         resolve(macAddress.toUpperCase());
       });
@@ -355,11 +355,15 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
   }
 
   async init(config: HUBClientConfig): Promise<AsyncMqttClient> {
-    let broker;
-    let macAddress;
+    this.logger.info('Comelit Client version 3.0.0');
+    let broker: string;
+    let macAddress: string;
     if (config.host) {
       broker = config.host.indexOf('://') !== -1 ? config.host : `mqtt://${config.host}`;
       macAddress = await this.getMACAddress(config);
+      this.logger.info(
+        `Using configured Comelit HUB at ${broker} (MAC ${macAddress})`
+      );
     } else {
       this.logger.info('Searching for Comelit HUB on LAN...');
       const devices = await this.scan();
@@ -441,6 +445,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     try {
       const response = await this.publish(packet);
       this.props.sessiontoken = response.sessiontoken;
+      this.logger.info(`Got session token: ${response.sessiontoken}`);
       return true;
     } catch (e) {
       console.error(e);
@@ -486,7 +491,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     return ComelitClient.evalResponse(response);
   }
 
-  async device(objId: string = ROOT_ID, detailLevel?: number): Promise<DeviceData> {
+  async device(objId: string = ROOT_ID, detailLevel?: number): Promise<DeviceData[]> {
     const packet: MqttMessage = {
       req_type: REQUEST_TYPE.STATUS,
       seq_id: this.props.index++,
@@ -497,7 +502,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     };
     const response = await this.publish(packet);
     ComelitClient.evalResponse(response);
-    return response.out_data[0] as DeviceData;
+    return response.out_data as DeviceData[];
   }
 
   async zones(objId: string): Promise<DeviceData> {
@@ -516,7 +521,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
   }
 
   async fetchHomeIndex(): Promise<HomeIndex> {
-    const root = await this.device(ROOT_ID);
+    const root = await this.device(ROOT_ID, 2);
     this.logger.debug('Home index successfully read: \n', JSON.stringify(root, null, 2));
     return this.mapHome(root);
   }
@@ -572,7 +577,7 @@ export class ComelitClient extends PromiseBasedQueue<MqttMessage, MqttIncomingMe
     return ComelitClient.evalResponse(response);
   }
 
-  mapHome(home: DeviceData): HomeIndex {
+  mapHome(home: DeviceData[]): HomeIndex {
     this.homeIndex = new HomeIndex(home, this.logger);
     return this.homeIndex;
   }
